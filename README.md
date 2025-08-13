@@ -64,7 +64,7 @@ flutter run
 ## 📈 Roadmap
 
 - [x] Version 1.0 : Cartographie de base
-- [x] Version 1.1 : Système de suggestions dans le profil
+- [x] Version 1.1 : Système de suggestions dans le profil et statistiques   anonymes basées sur l'appareil
 - [ ] Version 1.2 : Système de récompenses (badges pour contributions)
 - [ ] Version 3.0 : Analyse des données de remplissage
 

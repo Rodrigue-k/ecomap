@@ -3,7 +3,10 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:intl/intl.dart';
 import '../core/app_theme.dart';
+import '../services/firebase_service.dart';
+import '../services/device_service.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -11,16 +14,17 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(),
       body: SingleChildScrollView(
         child: Column(
           children: [
             _buildHeader(),
             const SizedBox(height: 20),
             _buildStatsCard(),
+            //const SizedBox(height: 30),
+            //_buildSettingsSection(),
             const SizedBox(height: 30),
-            _buildSettingsSection(),
-            const SizedBox(height: 30),
-            _buildSuggestionSection(context), // Nouvelle section
+            _buildSuggestionSection(context),
             const SizedBox(height: 30),
             _buildAppInfoSection(),
           ],
@@ -37,8 +41,8 @@ class ProfileScreen extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            AppTheme.primaryColor.withOpacity(0.8),
-            AppTheme.primaryColor.withOpacity(0.2),
+            AppTheme.primaryColor.withOpacity(0.9),
+            AppTheme.primaryColor.withOpacity(0.7),
           ],
         ),
         borderRadius: const BorderRadius.only(
@@ -55,7 +59,7 @@ class ProfileScreen extends StatelessWidget {
           ),
           const SizedBox(height: 15),
           const Text(
-            'Utilisateur EcoMap',
+            'Contributeur EcoMap',
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
@@ -63,9 +67,23 @@ class ProfileScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 5),
-          Text(
-            'Membre depuis Mars 2025',
-            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+          StreamBuilder<Map<String, dynamic>>(
+            stream: FirebaseService.getUserStats(),
+            builder: (context, snapshot) {
+              final stats = snapshot.data ?? {};
+              final lastUpdated = stats['lastUpdated'] as Timestamp?;
+              String memberSince = 'Nouveau contributeur';
+
+              if (lastUpdated != null) {
+                memberSince =
+                    'Membre depuis ${DateFormat('MMM yyyy').format(lastUpdated.toDate())}';
+              }
+
+              return Text(
+                memberSince,
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              );
+            },
           ),
           const SizedBox(height: 20),
           Row(
@@ -95,23 +113,44 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildStatsCard() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Card(
-        elevation: 5,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildStatItem('42', 'Poubelles ajoutées'),
-              _buildStatItem('128', 'Contributions'),
-              _buildStatItem('3', 'Badges'),
-            ],
+    return StreamBuilder<Map<String, dynamic>>(
+      stream: FirebaseService.getUserStats(),
+      builder: (context, snapshot) {
+        final stats = snapshot.data ?? {};
+        final addedBins = stats['addedBins'] ?? 0;
+        final deletedBins = stats['deletedBins'] ?? 0;
+        final totalContributions = addedBins + deletedBins;
+
+        // Calculer le nombre de badges (exemple simple)
+        int badges = 0;
+        if (addedBins >= 10) badges++;
+        if (addedBins >= 50) badges++;
+        if (totalContributions >= 100) badges++;
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Card(
+            elevation: 5,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildStatItem(addedBins.toString(), 'Ajoutées'),
+                  _buildStatItem(
+                    totalContributions.toString(),
+                    'Contributions',
+                  ),
+                  _buildStatItem(badges.toString(), 'Badges'),
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -180,7 +219,10 @@ class ProfileScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
                 borderSide: const BorderSide(color: AppTheme.textSecondary),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
             ),
             maxLines: 4,
           ),
@@ -191,7 +233,9 @@ class ProfileScreen extends StatelessWidget {
               onPressed: () async {
                 if (suggestionController.text.trim().isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Veuillez entrer une suggestion valide.')),
+                    const SnackBar(
+                      content: Text('Veuillez entrer une suggestion valide.'),
+                    ),
                   );
                   return;
                 }
@@ -212,16 +256,20 @@ class ProfileScreen extends StatelessWidget {
                   final appVersion = packageInfo.version;
 
                   // Envoyer la suggestion à Firestore
-                  await FirebaseFirestore.instance.collection('suggestions').add({
-                    'text': suggestionController.text.trim(),
-                    'timestamp': DateTime.now().toIso8601String(),
-                    'deviceId': deviceId,
-                    'appVersion': appVersion,
-                  });
+                  await FirebaseFirestore.instance
+                      .collection('suggestions')
+                      .add({
+                        'text': suggestionController.text.trim(),
+                        'timestamp': DateTime.now().toIso8601String(),
+                        'deviceId': deviceId,
+                        'appVersion': appVersion,
+                      });
 
                   suggestionController.clear();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Suggestion envoyée avec succès !')),
+                    const SnackBar(
+                      content: Text('Suggestion envoyée avec succès !'),
+                    ),
                   );
                 } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -232,7 +280,10 @@ class ProfileScreen extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primaryColor,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
