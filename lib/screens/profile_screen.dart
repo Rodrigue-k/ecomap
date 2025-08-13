@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../core/app_theme.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -16,6 +19,8 @@ class ProfileScreen extends StatelessWidget {
             _buildStatsCard(),
             const SizedBox(height: 30),
             _buildSettingsSection(),
+            const SizedBox(height: 30),
+            _buildSuggestionSection(context), // Nouvelle section
             const SizedBox(height: 30),
             _buildAppInfoSection(),
           ],
@@ -148,6 +153,92 @@ class ProfileScreen extends StatelessWidget {
             icon: Icons.language,
             title: 'Langue',
             trailing: const Text('Français'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSuggestionSection(BuildContext context) {
+    final TextEditingController suggestionController = TextEditingController();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Suggestions',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 15),
+          TextField(
+            controller: suggestionController,
+            decoration: InputDecoration(
+              hintText: 'Entrez votre suggestion pour améliorer EcoMap...',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: AppTheme.textSecondary),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+            maxLines: 4,
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton(
+              onPressed: () async {
+                if (suggestionController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Veuillez entrer une suggestion valide.')),
+                  );
+                  return;
+                }
+
+                try {
+                  // Récupérer l'ID du device (optionnel)
+                  final deviceInfo = DeviceInfoPlugin();
+                  String? deviceId;
+                  try {
+                    final androidInfo = await deviceInfo.androidInfo;
+                    deviceId = androidInfo.id; // Ou autre propriété unique
+                  } catch (e) {
+                    deviceId = 'unknown';
+                  }
+
+                  // Récupérer la version de l'app
+                  final packageInfo = await PackageInfo.fromPlatform();
+                  final appVersion = packageInfo.version;
+
+                  // Envoyer la suggestion à Firestore
+                  await FirebaseFirestore.instance.collection('suggestions').add({
+                    'text': suggestionController.text.trim(),
+                    'timestamp': DateTime.now().toIso8601String(),
+                    'deviceId': deviceId,
+                    'appVersion': appVersion,
+                  });
+
+                  suggestionController.clear();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Suggestion envoyée avec succès !')),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Erreur lors de l\'envoi : $e')),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('Envoyer'),
+            ),
           ),
         ],
       ),

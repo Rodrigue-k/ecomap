@@ -64,8 +64,8 @@ flutter run
 ## 📈 Roadmap
 
 - [x] Version 1.0 : Cartographie de base
-- [ ] Version 1.1 : Système de récompenses
-- [ ] Version 2.0 : Intégration avec les services municipaux
+- [x] Version 1.1 : Système de suggestions dans le profil
+- [ ] Version 1.2 : Système de récompenses (badges pour contributions)
 - [ ] Version 3.0 : Analyse des données de remplissage
 
 ## 🤝 Comment contribuer
