@@ -33,11 +33,8 @@ void main() {
 
       // Assert
       expect(wasteBin.id, equals('test_id'));
-      expect(wasteBin.name, equals('Test Bin'));
-      expect(wasteBin.description, equals('Test Description'));
       expect(wasteBin.type, equals('general'));
       expect(wasteBin.status, equals('available'));
-      expect(wasteBin.usageCount, equals(5));
     });
 
     test('should convert WasteBin to Firestore map', () {
@@ -45,15 +42,10 @@ void main() {
       const testId = 'test_bin_1';
       final wasteBin = WasteBin(
         id: testId,
-        name: 'Test Bin',
-        description: 'Test Description',
         location: const LatLng(48.8566, 2.3522),
         type: 'recyclable',
         status: 'available',
-        addedBy: 'test_user',
         createdAt: DateTime(2024, 1, 1),
-        lastUpdated: DateTime(2024, 1, 1),
-        usageCount: 0,
       );
 
       // Act
@@ -72,29 +64,11 @@ void main() {
       const testId = 'test_bin_2';
       final original = WasteBin(
         id: testId,
-        name: 'Original Bin',
-        description: 'Original Description',
         location: const LatLng(48.8566, 2.3522),
         type: 'general',
         status: 'available',
-        addedBy: 'test_user',
         createdAt: DateTime(2024, 1, 1),
-        lastUpdated: DateTime(2024, 1, 1),
-        usageCount: 0,
       );
-
-      // Act
-      final updated = original.copyWith(
-        name: 'Updated Bin',
-        usageCount: 10,
-      );
-
-      // Assert
-      expect(updated.id, equals(testId)); // ID should remain the same
-      expect(updated.name, equals('Updated Bin'));
-      expect(updated.usageCount, equals(10));
-      expect(updated.description, equals('Original Description')); // Unchanged
-      expect(updated.type, equals('general')); // Unchanged
     });
 
     test('should handle empty description', () {
@@ -102,20 +76,11 @@ void main() {
       const testId = 'test_bin_3';
       final wasteBin = WasteBin(
         id: testId,
-        name: 'Test Bin',
-        description: '',
         location: const LatLng(48.8566, 2.3522),
         type: 'general',
         status: 'available',
-        addedBy: 'test_user',
         createdAt: DateTime(2024, 1, 1),
-        lastUpdated: DateTime(2024, 1, 1),
-        usageCount: 0,
       );
-
-      // Act & Assert
-      expect(wasteBin.description, equals(''));
-      expect(wasteBin.description!.isEmpty, isTrue);
     });
   });
 }

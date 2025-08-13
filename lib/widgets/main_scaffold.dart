@@ -6,10 +6,7 @@ import '../core/app_theme.dart';
 class MainScaffold extends StatefulWidget {
   final Widget child;
 
-  const MainScaffold({
-    super.key,
-    required this.child,
-  });
+  const MainScaffold({super.key, required this.child});
 
   @override
   State<MainScaffold> createState() => _MainScaffoldState();
@@ -35,11 +32,8 @@ class _MainScaffoldState extends State<MainScaffold> {
           case AppRouter.map:
             _currentIndex = 0;
             break;
-          case AppRouter.addBin:
-            _currentIndex = 1;
-            break;
           case AppRouter.profile:
-            _currentIndex = 2;
+            _currentIndex = 1;
             break;
         }
       }
@@ -51,7 +45,7 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   void _onItemTapped(int index) {
     if (!mounted) return;
-    
+
     setState(() {
       _currentIndex = index;
     });
@@ -62,9 +56,6 @@ class _MainScaffoldState extends State<MainScaffold> {
           context.go(AppRouter.map);
           break;
         case 1:
-          context.go(AppRouter.addBin);
-          break;
-        case 2:
           context.go(AppRouter.profile);
           break;
       }
@@ -87,18 +78,8 @@ class _MainScaffoldState extends State<MainScaffold> {
         unselectedItemColor: AppTheme.textSecondary,
         elevation: 8,
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.map),
-            label: 'Carte',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add_location),
-            label: 'Ajouter',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profil',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Carte'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
         ],
       ),
     );

@@ -1,58 +1,93 @@
+import com.android.build.api.dsl.ApplicationExtension
+import org.gradle.api.JavaVersion
+import java.io.FileInputStream
 import java.util.Properties
 
 plugins {
     id("com.android.application")
-    // START: FlutterFire Configuration
     id("com.google.gms.google-services")
-    // END: FlutterFire Configuration
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// Charger la clé API depuis local.properties
-val localProperties = Properties()
-val localPropertiesFile = rootProject.file("local.properties")
-if (localPropertiesFile.exists()) {
-    localPropertiesFile.reader(Charsets.UTF_8).use { reader ->
-        localProperties.load(reader)
+val JAVA_VERSION = JavaVersion.VERSION_17
+val TARGET_SDK = 35
+val MIN_SDK = 24
+val NDK_VERSION = "27.0.12077973"
+
+val keystoreProperties = Properties().apply {
+    val keystoreFile = rootProject.file("key.properties")
+    if (keystoreFile.exists()) {
+        load(FileInputStream(keystoreFile))
     }
 }
 
 android {
     namespace = "com.koudatek.ecomap"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973"
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
-    }
+    compileSdk = TARGET_SDK
+    ndkVersion = NDK_VERSION
 
     defaultConfig {
         applicationId = "com.koudatek.ecomap"
-        minSdk = 23
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        minSdk = MIN_SDK
+        targetSdk = TARGET_SDK
+        versionCode = 1
+        versionName = "1.0.0"
+        manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = getLocalProperty("GOOGLE_MAPS_API_KEY")
+    }
 
-        // Injecter la clé API dans AndroidManifest.xml
-        manifestPlaceholders.put(
-            "GOOGLE_MAPS_API_KEY",
-            localProperties.getProperty("GOOGLE_MAPS_API_KEY") ?: ""
-        )
+    signingConfigs {
+        create("unified") {
+            keyAlias = keystoreProperties.getProperty("keyAlias", "ecomap")
+            keyPassword = keystoreProperties.getProperty("keyPassword", "")
+            storeFile = keystoreProperties.getProperty("storeFile")?.let { file(it) }
+            storePassword = keystoreProperties.getProperty("storePassword", "")
+        }
     }
 
     buildTypes {
-        getByName("release") {
-            signingConfig = signingConfigs.getByName("debug")
+        debug {
+            signingConfig = signingConfigs.getByName("unified")
+            //applicationIdSuffix = ".debug"
+            resValue("string", "app_name", "Ecomap Debug")
         }
+
+        release {
+            signingConfig = signingConfigs.getByName("unified")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            resValue("string", "app_name", "Ecomap")
+        }
+    }
+
+    compileOptions {
+        isCoreLibraryDesugaringEnabled = true
+        sourceCompatibility = JAVA_VERSION
+        targetCompatibility = JAVA_VERSION
+    }
+
+    kotlinOptions {
+        jvmTarget = JAVA_VERSION.toString()
     }
 }
 
-flutter {
-    source = "../.."
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+    implementation(platform("com.google.firebase:firebase-bom:33.0.0"))
+    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-auth")
+}
+
+fun getLocalProperty(name: String): String {
+    val localProperties = Properties().apply {
+        val localFile = rootProject.file("local.properties")
+        if (localFile.exists()) {
+            load(FileInputStream(localFile))
+        }
+    }
+    return localProperties.getProperty(name, "")
 }

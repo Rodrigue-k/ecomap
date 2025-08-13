@@ -39,6 +39,7 @@ linter:
     prefer_final_locals: true
     
     # Documentation
+    #
     public_member_api_docs: false
     package_api_docs: false
 

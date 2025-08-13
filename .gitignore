@@ -65,7 +65,7 @@ DerivedData/
 # More Android build outputs
 /android/.gradle/
 /android/local.properties
-local.properties
+android/key.properties
 *.apk
 *.aab
 
@@ -81,3 +81,4 @@ local.properties
 # Keystore files
 *.jks
 *.keystore
+**/*.jks

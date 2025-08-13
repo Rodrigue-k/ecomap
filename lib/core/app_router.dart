@@ -1,7 +1,7 @@
 
 import 'package:go_router/go_router.dart';
-import '../screens/map_screen.dart';
-import '../screens/add_bin_screen.dart';
+import '../screens/map/map_screen.dart';
+import '../screens/add_bin/add_bin_screen.dart';
 import '../screens/profile_screen.dart';
 import '../widgets/main_scaffold.dart';
 
@@ -20,10 +20,10 @@ class AppRouter {
             path: map,
             builder: (context, state) => const MapScreen(),
           ),
-          GoRoute(
+          /*GoRoute(
             path: addBin,
             builder: (context, state) => const AddBinScreen(),
-          ),
+          ),*/
           GoRoute(
             path: profile,
             builder: (context, state) => const ProfileScreen(),

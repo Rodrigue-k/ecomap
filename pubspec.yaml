@@ -52,6 +52,7 @@ dependencies:
   flutter_dotenv: ^5.2.1
   logger: ^2.6.1
   permission_handler: ^12.0.1
+  flutter_svg: ^2.2.0
 
 dev_dependencies:
   flutter_test:
@@ -81,6 +82,9 @@ flutter:
   assets:
     - .env
     - assets/icon/
+    - assets/images/
+    - assets/images/current_location.png
+    - assets/images/trash-bin_map.png
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

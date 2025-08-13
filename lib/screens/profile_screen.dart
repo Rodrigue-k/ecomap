@@ -1,418 +1,228 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import '../providers/waste_bin_provider.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import '../core/app_theme.dart';
 
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final statsAsync = ref.watch(statsProvider.select((value) => AsyncValue.data(value)));
-    final currentLocationAsync = ref.watch(currentLocationProvider);
-
+  Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mon Profil'),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          IconButton(
-            onPressed: () {
-              // TODO: Implémenter la déconnexion
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Déconnexion à implémenter')),
-              );
-            },
-            icon: const Icon(Icons.logout),
-            tooltip: 'Déconnexion',
-          ),
-        ],
-      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // En-tête du profil
-            Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  children: [
-                    CircleAvatar(
-                      radius: 50,
-                      backgroundColor: Colors.green[100],
-                      child: Icon(
-                        Icons.person,
-                        size: 50,
-                        color: Colors.green[700],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Utilisateur EcoMap',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Membre depuis ${DateTime.now().month}/${DateTime.now().year}',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _buildStatItem(
-                          icon: Icons.delete,
-                          value: '0',
-                          label: 'Poubelles ajoutées',
-                        ),
-                        _buildStatItem(
-                          icon: Icons.thumb_up,
-                          value: '0',
-                          label: 'Utilisations',
-                        ),
-                        _buildStatItem(
-                          icon: Icons.star,
-                          value: '0',
-                          label: 'Points',
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Statistiques personnelles
-            Card(
-              elevation: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.analytics, color: Colors.green[700]),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Mes Statistiques',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green[700],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    statsAsync.when(
-                      data: (stats) => Column(
-                        children: [
-                          _buildStatRow('Total des poubelles', '${stats['total']}'),
-                          _buildStatRow('Poubelles disponibles', '${stats['available']}'),
-                          _buildStatRow('Poubelles pleines', '${stats['full']}'),
-                          _buildStatRow('Poubelles recyclables', '${stats['recyclable']}'),
-                          _buildStatRow('Poubelles organiques', '${stats['organic']}'),
-                        ],
-                      ),
-                      loading: () => const Center(child: CircularProgressIndicator()),
-                      error: (error, stack) => Text('Erreur: $error'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Actions rapides
-            Card(
-              elevation: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.flash_on, color: Colors.orange[700]),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Actions Rapides',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.orange[700],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    _buildActionButton(
-                      context: context,
-                      icon: Icons.add_location,
-                      title: 'Ajouter une poubelle',
-                      subtitle: 'Signaler un nouvel emplacement',
-                      onTap: () => context.go('/add-bin'),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildActionButton(
-                      context: context,
-                      icon: Icons.map,
-                      title: 'Voir la carte',
-                      subtitle: 'Explorer les poubelles',
-                      onTap: () => context.go('/map'),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildActionButton(
-                      context: context,
-                      icon: Icons.settings,
-                      title: 'Paramètres',
-                      subtitle: 'Configurer l\'application',
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Paramètres à implémenter')),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Localisation actuelle
-            Card(
-              elevation: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.location_on, color: Colors.blue[700]),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Ma Position',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue[700],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    currentLocationAsync.when(
-                      data: (position) {
-                        if (position == null) {
-                          return const Text('Position non disponible');
-                        }
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Latitude: ${position.latitude.toStringAsFixed(6)}',
-                              style: const TextStyle(fontSize: 16),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Longitude: ${position.longitude.toStringAsFixed(6)}',
-                              style: const TextStyle(fontSize: 16),
-                            ),
-                            const SizedBox(height: 8),
-                            ElevatedButton.icon(
-                              onPressed: () => context.go('/map'),
-                              icon: const Icon(Icons.map),
-                              label: const Text('Voir sur la carte'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue,
-                                foregroundColor: Colors.white,
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                      loading: () => const Center(child: CircularProgressIndicator()),
-                      error: (error, stack) => Text('Erreur de localisation: $error'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Informations sur l'application
-            Card(
-              color: Colors.grey[50],
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.info, color: Colors.grey[700]),
-                        const SizedBox(width: 8),
-                        Text(
-                          'À propos d\'EcoMap',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'EcoMap est une application citoyenne qui permet de localiser et signaler les poubelles publiques. '
-                      'Contribuez à un environnement plus propre en ajoutant de nouveaux emplacements !',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 16,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Text(
-                          'Version: 1.0.0',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                        const Spacer(),
-                        Text(
-                          '© 2024 EcoMap',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            _buildHeader(),
+            const SizedBox(height: 20),
+            _buildStatsCard(),
+            const SizedBox(height: 30),
+            _buildSettingsSection(),
+            const SizedBox(height: 30),
+            _buildAppInfoSection(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildStatItem({
-    required IconData icon,
-    required String value,
-    required String label,
-  }) {
+  Widget _buildHeader() {
+    return Container(
+      height: 280,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            AppTheme.primaryColor.withOpacity(0.8),
+            AppTheme.primaryColor.withOpacity(0.2),
+          ],
+        ),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircleAvatar(
+            radius: 50,
+            backgroundImage: AssetImage('assets/icon/icon.png'),
+          ),
+          const SizedBox(height: 15),
+          const Text(
+            'Utilisateur EcoMap',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textColor,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            'Membre depuis Mars 2025',
+            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildSocialButton('assets/icons/twitter.svg'),
+              const SizedBox(width: 15),
+              _buildSocialButton('assets/icons/facebook.svg'),
+              const SizedBox(width: 15),
+              _buildSocialButton('assets/icons/instagram.svg'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSocialButton(String assetPath) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white.withOpacity(0.5), width: 1),
+      ),
+      child: SvgPicture.asset(assetPath, height: 20, color: Colors.white),
+    );
+  }
+
+  Widget _buildStatsCard() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Card(
+        elevation: 5,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildStatItem('42', 'Poubelles ajoutées'),
+              _buildStatItem('128', 'Contributions'),
+              _buildStatItem('3', 'Badges'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String value, String label) {
     return Column(
       children: [
-        Icon(icon, size: 32, color: Colors.green[700]),
-        const SizedBox(height: 8),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 12,
-          ),
-          textAlign: TextAlign.center,
-        ),
+        const SizedBox(height: 5),
+        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
       ],
     );
   }
 
-  Widget _buildStatRow(String label, String value) {
+  Widget _buildSettingsSection() {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 16),
+          const Text(
+            'Préférences',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.green,
-            ),
+          const SizedBox(height: 15),
+          _buildSettingTile(
+            icon: Icons.notifications,
+            title: 'Notifications',
+            trailing: Switch(value: true, onChanged: (val) {}),
+          ),
+          _buildSettingTile(
+            icon: Icons.dark_mode,
+            title: 'Mode sombre',
+            trailing: Switch(value: false, onChanged: (val) {}),
+          ),
+          _buildSettingTile(
+            icon: Icons.language,
+            title: 'Langue',
+            trailing: const Text('Français'),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildActionButton({
-    required BuildContext context,
+  Widget _buildSettingTile({
+    required IconData icon,
+    required String title,
+    required Widget trailing,
+  }) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: AppTheme.primaryColor.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: AppTheme.primaryColor),
+      ),
+      title: Text(title),
+      trailing: trailing,
+      onTap: () {},
+    );
+  }
+
+  Widget _buildAppInfoSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'À propos',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 15),
+          _buildInfoTile(icon: Icons.info, title: 'Version', subtitle: '1.0.0'),
+          _buildInfoTile(
+            icon: Icons.star,
+            title: 'Notez l\'appli',
+            subtitle: 'Donnez-nous votre avis',
+          ),
+          _buildInfoTile(
+            icon: Icons.share,
+            title: 'Partager',
+            subtitle: 'Recommander à un ami',
+          ),
+          _buildInfoTile(
+            icon: Icons.privacy_tip,
+            title: 'Politique de confidentialité',
+            subtitle: 'Lire nos engagements',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoTile({
     required IconData icon,
     required String title,
     required String subtitle,
-    required VoidCallback onTap,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.all(12),
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey[300]!),
-          borderRadius: BorderRadius.circular(8),
+          color: AppTheme.primaryColor.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(10),
         ),
-        child: Row(
-          children: [
-            Icon(icon, color: Colors.green[700], size: 28),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(Icons.arrow_forward_ios, color: Colors.grey[400], size: 16),
-          ],
-        ),
+        child: Icon(icon, color: AppTheme.primaryColor),
       ),
+      title: Text(title),
+      subtitle: Text(subtitle),
+      onTap: () {},
     );
   }
 }

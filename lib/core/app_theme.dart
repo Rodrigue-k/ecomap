@@ -27,6 +27,8 @@ class AppTheme {
   static const Color binFull = Color(0xFFF44336);
   static const Color binMaintenance = Color(0xFF9E9E9E);
 
+  static const Color textColor = Color(0xFF333333);
+
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
