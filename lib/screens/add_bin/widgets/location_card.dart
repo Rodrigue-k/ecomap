@@ -1,7 +1,7 @@
-import 'package:EcoMap/screens/add_bin/add_bin_controller.dart';
-import 'package:EcoMap/screens/add_bin/widgets/location_loading.dart';
-import 'package:EcoMap/screens/add_bin/widgets/location_not_obtained.dart';
-import 'package:EcoMap/screens/add_bin/widgets/location_obtained.dart';
+import '../add_bin_controller.dart';
+import 'location_loading.dart';
+import 'location_not_obtained.dart';
+import 'location_obtained.dart';
 import 'package:flutter/material.dart';
 
 class LocationCard extends StatelessWidget {

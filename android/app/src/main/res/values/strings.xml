@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="location_permission_rationale">EcoMap nécessite l\'accès à votre localisation pour afficher les poubelles à proximité et permettre l\'ajout de nouvelles poubelles.</string>
+</resources>

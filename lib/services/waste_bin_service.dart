@@ -1,4 +1,4 @@
-import 'package:EcoMap/models/waste_bin.dart';
+import '../models/waste_bin.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:logger/logger.dart';
 

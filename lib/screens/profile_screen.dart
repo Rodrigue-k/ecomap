@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:intl/intl.dart';
-import '../core/app_theme.dart';
+import '../core/router/app_router.dart';
+import '../core/theme/app_theme.dart';
+import '../core/widgets/snack_bar_manager.dart';
 import '../services/firebase_service.dart';
-import '../services/device_service.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -14,7 +16,7 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(),
+      appBar: AppBar(title: const Text('Carte EcoMap')),
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -26,7 +28,7 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: 30),
             _buildSuggestionSection(context),
             const SizedBox(height: 30),
-            _buildAppInfoSection(),
+            _buildAppInfoSection(context),
           ],
         ),
       ),
@@ -37,14 +39,6 @@ class ProfileScreen extends StatelessWidget {
     return Container(
       height: 280,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            AppTheme.primaryColor.withOpacity(0.9),
-            AppTheme.primaryColor.withOpacity(0.7),
-          ],
-        ),
         borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(30),
           bottomRight: Radius.circular(30),
@@ -55,7 +49,7 @@ class ProfileScreen extends StatelessWidget {
         children: [
           const CircleAvatar(
             radius: 50,
-            backgroundImage: AssetImage('assets/icon/icon.png'),
+            backgroundImage: AssetImage('assets/images/grandmother.png'),
           ),
           const SizedBox(height: 15),
           const Text(
@@ -86,7 +80,7 @@ class ProfileScreen extends StatelessWidget {
             },
           ),
           const SizedBox(height: 20),
-          Row(
+          /*Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _buildSocialButton('assets/icons/twitter.svg'),
@@ -95,7 +89,7 @@ class ProfileScreen extends StatelessWidget {
               const SizedBox(width: 15),
               _buildSocialButton('assets/icons/instagram.svg'),
             ],
-          ),
+          ),*/
         ],
       ),
     );
@@ -106,9 +100,16 @@ class ProfileScreen extends StatelessWidget {
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withOpacity(0.5), width: 1),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.5),
+          width: 1,
+        ),
       ),
-      child: SvgPicture.asset(assetPath, height: 20, color: Colors.white),
+      child: SvgPicture.asset(
+        assetPath,
+        height: 20,
+        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+      ),
     );
   }
 
@@ -167,7 +168,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSettingsSection() {
+  /*Widget _buildSettingsSection() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
@@ -196,7 +197,7 @@ class ProfileScreen extends StatelessWidget {
         ],
       ),
     );
-  }
+  }*/
 
   Widget _buildSuggestionSection(BuildContext context) {
     final TextEditingController suggestionController = TextEditingController();
@@ -266,14 +267,12 @@ class ProfileScreen extends StatelessWidget {
                       });
 
                   suggestionController.clear();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Suggestion envoyée avec succès !'),
-                    ),
+                  SnackBarManager.showSuccessSnackBar(
+                    'Suggestion envoyée avec succès !',
                   );
                 } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Erreur lors de l\'envoi : $e')),
+                  SnackBarManager.showErrorSnackBar(
+                    'Erreur lors de l\'envoi de la suggestion.',
                   );
                 }
               },
@@ -296,7 +295,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSettingTile({
+  /*Widget _buildSettingTile({
     required IconData icon,
     required String title,
     required Widget trailing,
@@ -305,7 +304,7 @@ class ProfileScreen extends StatelessWidget {
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: AppTheme.primaryColor.withOpacity(0.1),
+          color: AppTheme.primaryColor.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(icon, color: AppTheme.primaryColor),
@@ -314,9 +313,9 @@ class ProfileScreen extends StatelessWidget {
       trailing: trailing,
       onTap: () {},
     );
-  }
+  }*/
 
-  Widget _buildAppInfoSection() {
+  Widget _buildAppInfoSection(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
@@ -327,8 +326,25 @@ class ProfileScreen extends StatelessWidget {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 15),
-          _buildInfoTile(icon: Icons.info, title: 'Version', subtitle: '1.0.0'),
-          _buildInfoTile(
+          FutureBuilder<PackageInfo>(
+            future: PackageInfo.fromPlatform(),
+            builder: (context, snapshot) {
+              String version = 'Chargement...';
+              if (snapshot.hasData) {
+                version = snapshot.data!.version;
+              } else if (snapshot.hasError) {
+                version = 'Erreur';
+              }
+              return _buildInfoTile(
+                context: context,
+                icon: Icons.info,
+                title: 'Version',
+                subtitle: version,
+                onTap: () {},
+              );
+            },
+          ),
+          /*_buildInfoTile(
             icon: Icons.star,
             title: 'Notez l\'appli',
             subtitle: 'Donnez-nous votre avis',
@@ -337,11 +353,13 @@ class ProfileScreen extends StatelessWidget {
             icon: Icons.share,
             title: 'Partager',
             subtitle: 'Recommander à un ami',
-          ),
+          ),*/
           _buildInfoTile(
+            context: context,
             icon: Icons.privacy_tip,
             title: 'Politique de confidentialité',
             subtitle: 'Lire nos engagements',
+            onTap: () => context.go(AppRouter.privacyPolicy),
           ),
         ],
       ),
@@ -349,22 +367,24 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildInfoTile({
+    required BuildContext context,
     required IconData icon,
     required String title,
     required String subtitle,
+    VoidCallback? onTap,
   }) {
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: AppTheme.primaryColor.withOpacity(0.1),
+          color: AppTheme.primaryColor.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(icon, color: AppTheme.primaryColor),
       ),
       title: Text(title),
       subtitle: Text(subtitle),
-      onTap: () {},
+      onTap: onTap, // Utilisez le callback
     );
   }
 }

@@ -1,8 +1,8 @@
-import 'package:EcoMap/models/waste_bin.dart';
-import 'package:EcoMap/services/device_service.dart';
+import '../core/app_logger.dart';
+import '../models/waste_bin.dart';
+import 'device_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:latlong2/latlong.dart' as latlong;
-import 'package:device_info_plus/device_info_plus.dart';
 import 'dart:async';
 
 class FirebaseService {
@@ -69,7 +69,7 @@ class FirebaseService {
     try {
       final deviceId = await DeviceService.getDeviceId();
       if (deviceId == null) {
-        print('Impossible d\'incrémenter la statistique: ID d\'appareil non disponible');
+        AppLogger.e('Impossible d\'incrémenter la statistique: ID d\'appareil non disponible');
         return;
       }
       
@@ -95,7 +95,7 @@ class FirebaseService {
         }
       });
     } catch (e) {
-      print('Erreur lors de la mise à jour des statistiques utilisateur: $e');
+      AppLogger.e('Erreur lors de la mise à jour des statistiques utilisateur: $e');
     }
   }
 

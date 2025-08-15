@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../core/app_router.dart';
-import '../core/app_theme.dart';
+import '../core/router/app_router.dart';
+import '../core/theme/app_theme.dart';
 
 class MainScaffold extends StatefulWidget {
   final Widget child;

@@ -1,3 +1,4 @@
+import '../core/app_logger.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -28,7 +29,7 @@ class DeviceService {
       _cachedDeviceId = deviceId;
       return deviceId;
     } catch (e) {
-      print('Erreur lors de la récupération de l\'ID de l\'appareil: $e');
+      AppLogger.e('Erreur lors de la récupération de l\'ID de l\'appareil: $e');
       return null;
     }
   }
@@ -40,7 +41,7 @@ class DeviceService {
       final info = await deviceInfo.deviceInfo;
       
       if (info is AndroidDeviceInfo) {
-        return 'android-${info.id ?? const Uuid().v4()}';
+        return 'android-${info.id}';
       } else if (info is IosDeviceInfo) {
         return 'ios-${info.identifierForVendor ?? const Uuid().v4()}';
       } else if (info is WebBrowserInfo) {
@@ -50,7 +51,7 @@ class DeviceService {
         return 'unknown-${const Uuid().v4()}';
       }
     } catch (e) {
-      print('Erreur lors de la génération de l\'ID de l\'appareil: $e');
+      AppLogger.e('Erreur lors de la génération de l\'ID de l\'appareil: $e');
       // En cas d'erreur, on retourne un UUID aléatoire
       return 'error-${const Uuid().v4()}';
     }

@@ -1,6 +1,7 @@
-import 'package:EcoMap/core/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart' as latlong;
+
+import '../../../core/theme/app_theme.dart';
 
 class DialogManager {
   static Future<bool> showCustomDialog({
@@ -19,21 +20,22 @@ class DialogManager {
         title: Text(
           title,
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                color: AppTheme.textPrimary,
-                fontWeight: FontWeight.w600,
-              ),
+            color: AppTheme.textPrimary,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         content: Text(
           content,
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: AppTheme.textSecondary,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyLarge?.copyWith(color: AppTheme.textSecondary),
         ),
         actions: actions.map((action) {
           if (action is TextButton) {
             return TextButton(
               style: TextButton.styleFrom(
-                foregroundColor: action.style?.foregroundColor?.resolve({}) ??
+                foregroundColor:
+                    action.style?.foregroundColor?.resolve({}) ??
                     AppTheme.primaryColor,
                 textStyle: Theme.of(context).textTheme.bodyLarge,
               ),
@@ -71,7 +73,9 @@ class DialogManager {
   }
 
   static Future<bool> showAddBinDialog(
-      BuildContext context, latlong.LatLng location) {
+    BuildContext context,
+    latlong.LatLng location,
+  ) {
     return showCustomDialog(
       context: context,
       title: 'Ajouter une poubelle',
