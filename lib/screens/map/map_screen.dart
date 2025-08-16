@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:latlong2/latlong.dart' as latlong;
-import 'package:geolocator/geolocator.dart';
+import 'package:geolocator/geolocator.dart' hide LocationServiceDisabledException, PermissionDeniedException;
 
 import 'package:EcoMap/core/theme/app_theme.dart';
+import 'package:EcoMap/core/widgets/snack_bar_manager.dart';
 import 'package:EcoMap/models/waste_bin.dart';
 import 'package:EcoMap/providers/waste_bin_provider.dart';
 import 'package:EcoMap/screens/map/services/location_service.dart';
@@ -23,7 +24,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   gmaps.GoogleMapController? _mapController;
   latlong.LatLng? _currentLocation;
   final Set<gmaps.Marker> _markers = {};
-  bool _isLoading = true;
   
   // Position par défaut (Lomé, Togo)
   static const _defaultLocation = latlong.LatLng(6.1333, 1.2167);
@@ -42,7 +42,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     // Charger les données après le premier rendu
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Charger les poubelles
-      _loadWasteBins();
+      _loadWasteBins(showLoading: false);
       
       // Initialiser la localisation
       _initializeLocation();
@@ -50,42 +50,35 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
   
   // Charge les poubelles indépendamment de la localisation
-  void _loadWasteBins() {
+  Future<void> _loadWasteBins({bool showLoading = true}) async {
     if (!mounted) return;
     
-    // Déclencher le chargement des poubelles via le Provider
-    // La mise à jour de l'interface sera gérée par le Consumer dans le build
-    ref.read(wasteBinsProvider);
-  }
-  
-  Future<void> _onAppResumed() async {
-    debugPrint('Application revenue au premier plan, vérification de la localisation...');
-    await _checkAndUpdateLocation();
-  }
-  
-  Future<void> _checkAndUpdateLocation() async {
+    if (showLoading) {
+      // Afficher un indicateur de chargement si demandé
+      _showInfoSnackBar('Mise à jour des poubelles en cours...');
+    }
+    
     try {
-      final serviceEnabled = await _locationService.isLocationServiceEnabled();
-      if (serviceEnabled) {
-        final permission = await _locationService.checkPermission();
-        if (permission == LocationPermission.whileInUse || 
-            permission == LocationPermission.always) {
-          final position = await _locationService.getCurrentPosition();
-          if (mounted) {
-            setState(() {
-              _currentLocation = position;
-            });
-            _centerMap();
-            _updateCurrentLocationMarker();
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          }
-        }
-      }
+      // Déclencher le chargement des poubelles via le Provider
+      final result = ref.refresh(wasteBinsProvider.future);
+      await result;
     } catch (e) {
-      debugPrint('Erreur lors de la mise à jour de la position: $e');
+      debugPrint('Erreur lors du chargement des poubelles: $e');
+      if (mounted) {
+        _showInfoSnackBar('Erreur lors du chargement des données');
+      }
     }
   }
-
+  
+  // Appelé quand l'application revient au premier plan
+  Future<void> _onAppResumed() async {
+    debugPrint('Application revenue au premier plan, rafraîchissement des données...');
+    // Rafraîchir les données
+    await _loadWasteBins(showLoading: true);
+    // Vérifier et mettre à jour la localisation
+    await _initializeLocation();
+  }
+  
   @override
   void dispose() {
     _mapController?.dispose();
@@ -93,48 +86,74 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     super.dispose();
   }
 
-  // Initialise la localisation et charge les données
+  // Initialise la localisation et gère l'affichage des notifications
   Future<void> _initializeLocation() async {
+    if (!mounted) return;
+    
     try {
-      // Ne pas bloquer le chargement des poubelles sur la localisation
-      _isLoading = false;
+      // Vérifier si la localisation est activée
+      final isLocationEnabled = await _locationService.isLocationServiceEnabled();
+      if (!isLocationEnabled) {
+        _showPermanentSnackBar(
+          'La localisation est désactivée. Activez-la pour voir votre position.',
+          isLocationDisabled: true,
+        );
+        return;
+      }
       
-      // Essayer d'obtenir la position actuelle en arrière-plan
-      _tryGetCurrentLocation();
-      
-    } catch (e) {
-      debugPrint('Erreur dans _initializeLocation: $e');
-      _isLoading = false;
-    }
-  }
-  
-  // Essaie d'obtenir la position actuelle sans bloquer l'interface
-  Future<void> _tryGetCurrentLocation() async {
-    try {
-      final serviceEnabled = await _locationService.isLocationServiceEnabled();
-      if (!serviceEnabled) return;
-      
+      // Vérifier les permissions
       var permission = await _locationService.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await _locationService.requestPermission();
       }
       
+      if (permission == LocationPermission.deniedForever) {
+        _showPermanentSnackBar(
+          'Les permissions de localisation sont nécessaires pour afficher votre position.',
+          isLocationDisabled: false,
+        );
+        return;
+      }
+      
       if (permission == LocationPermission.whileInUse || 
           permission == LocationPermission.always) {
-        
-        final position = await _locationService.getCurrentPosition();
-        if (!mounted) return;
-        
-        setState(() {
-          _currentLocation = position;
-          _updateCurrentLocationMarker();
-          _centerMap();
-          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        });
+        // Si la permission est accordée, masquer la SnackBar et obtenir la position
+        SnackBarManager.hideCurrentSnackBar();
+        await _tryGetCurrentLocation();
       }
+      
+    } catch (e) {
+      debugPrint('Erreur dans _initializeLocation: $e');
+      _showError('Erreur', 'Impossible d\'accéder à la localisation');
+    }
+  }
+  
+  // Essaie d'obtenir la position actuelle
+  Future<void> _tryGetCurrentLocation() async {
+    if (!mounted) return;
+    
+    try {
+      final position = await _locationService.getCurrentPosition();
+      if (!mounted) return;
+      
+      setState(() {
+        _currentLocation = position;
+        _updateCurrentLocationMarker();
+        _centerMap();
+      });
+      
+      // Cacher toute notification de localisation en cas de succès
+      SnackBarManager.hideCurrentSnackBar();
+      
     } catch (e) {
       debugPrint('Erreur lors de la récupération de la position: $e');
-      // Ne pas afficher de message d'erreur pour ne pas gêner l'utilisateur
+      if (e is LocationServiceDisabledException) {
+        _showPermanentSnackBar('La localisation est désactivée. Activez-la pour voir votre position.');
+      } else if (e is PermissionDeniedException) {
+        _showPermanentSnackBar('L\'accès à la localisation a été refusé.');
+      } else {
+        _showPermanentSnackBar('Impossible d\'obtenir votre position. Vérifiez votre connexion et les paramètres de localisation.');
+      }
     }
   }
 
@@ -152,48 +171,56 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   // Affiche un message de succès
   void _showSuccess(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-      ),
-    );
+    SnackBarManager.showSuccessSnackBar(message);
   }
 
   // Affiche un message d'erreur
   void _showError(String title, String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$title: $message'),
-        backgroundColor: Colors.red,
+    SnackBarManager.showErrorSnackBar('$title: $message');
+  }
+  
+  // Affiche un message d'information persistant avec une action appropriée
+  void _showPermanentSnackBar(String message, {bool isLocationDisabled = true}) {
+    if (!mounted) return;
+    
+    SnackBarManager.showPermanentSnackBar(
+      message,
+      action: SnackBarAction(
+        label: isLocationDisabled ? 'Activer la localisation' : 'Paramètres',
+        textColor: Colors.white,
+        onPressed: () async {
+          if (isLocationDisabled) {
+            // Ouvrir les paramètres de localisation
+            await _locationService.openLocationSettings();
+          } else {
+            // Ouvrir les paramètres de l'application pour les permissions
+            await _locationService.openAppSettings();
+          }
+          
+          // Vérifier à nouveau l'état après le retour des paramètres
+          if (mounted) {
+            await _initializeLocation();
+          }
+        },
       ),
     );
   }
 
-  // Vérifie et met à jour la position actuelle
-  /*Future<void> _checkAndUpdateLocation() async {
-    try {
-      if (await _locationService.isLocationServiceEnabled()) {
-        final permission = await _locationService.checkPermission();
-        if (permission == LocationPermission.denied) {
-          await _locationService.requestPermission();
-        } else if (permission == LocationPermission.whileInUse || 
-                  permission == LocationPermission.always) {
-          final position = await _locationService.getCurrentPosition();
-          if (mounted) {
-            setState(() {
-              _currentLocation = position;
-            });
-            _updateCurrentLocationMarker();
-            _centerMap();
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('Erreur lors de la vérification de la localisation: $e');
-    }
-  }*/
+  // Affiche un message d'information
+  void _showInfoSnackBar(String message) {
+    if (!mounted) return;
+    // Masquer d'abord les éventuelles notifications existantes
+    SnackBarManager.hideCurrentSnackBar();
+    // Afficher la nouvelle notification
+    SnackBarManager.showInfoSnackBar(message);
+  }
+
+  // Méthode pour rafraîchir toutes les données
+  Future<void> _refreshData() async {
+    await _loadWasteBins(showLoading: true);
+    await _initializeLocation();
+  }
 
   // Affiche les options pour une poubelle
   void _showBinOptions(WasteBin bin) {
@@ -341,11 +368,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   // Construit la carte Google Maps
   Widget _buildMap() {
-    debugPrint('Création de la carte avec ${_markers.length} marqueurs');
     
-    // Utiliser la position actuelle si disponible, sinon utiliser la position de test
     final initialPosition = _currentLocation ?? _defaultLocation;
-    debugPrint('Position initiale de la carte: ${initialPosition.latitude}, ${initialPosition.longitude}');
     
     // Créer la position initiale de la caméra
     final cameraPosition = gmaps.CameraPosition(
@@ -395,17 +419,27 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Carte EcoMap'),
-      ),
-      body: Stack(
-        children: [
-          // Carte Google Maps
-          Consumer(
-            builder: (context, ref, child) {
-              // Observer les changements de la liste des poubelles
-              final wasteBinsAsync = ref.watch(wasteBinsProvider);
+    return ScaffoldMessenger(
+      key: SnackBarManager.scaffoldMessengerKey,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Carte EcoMap'),
+          actions: [
+            // Bouton de rafraîchissement
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: _refreshData,
+              tooltip: 'Rafraîchir les données',
+            ),
+          ],
+        ),
+        body: Stack(
+          children: [
+            // Carte Google Maps
+            Consumer(
+              builder: (context, ref, child) {
+                // Observer les changements de la liste des poubelles
+                final wasteBinsAsync = ref.watch(wasteBinsProvider);
               
               // Mettre à jour les marqueurs quand les données changent
               return wasteBinsAsync.when(
@@ -434,34 +468,30 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 },
               );
             },
-          ),
-          
-          // Indicateur de chargement
-          if (_isLoading)
-            const Center(
-              child: CircularProgressIndicator(),
-            ),
-        ],
-      ),
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 100.0, right: 0.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            FloatingActionButton(
-              heroTag: 'gps_button',
-              onPressed: _centerMap,
-              tooltip: 'Recentrer sur ma position',
-              child: const Icon(Icons.gps_fixed),
-            ),
-            const SizedBox(height: 16),
-            FloatingActionButton(
-              heroTag: 'add_bin_button',
-              onPressed: _showAddBinDialog,
-              tooltip: 'Ajouter une poubelle',
-              child: const Icon(Icons.add),
-            ),
+            )
           ],
+      
+        ),
+        floatingActionButton: Padding(
+          padding: const EdgeInsets.only(bottom: 100.0, right: 0.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FloatingActionButton(
+                heroTag: 'gps_button',
+                onPressed: _centerMap,
+                tooltip: 'Recentrer sur ma position',
+                child: const Icon(Icons.gps_fixed),
+              ),
+              const SizedBox(height: 16),
+              FloatingActionButton(
+                heroTag: 'add_bin_button',
+                onPressed: _showAddBinDialog,
+                tooltip: 'Ajouter une poubelle',
+                child: const Icon(Icons.add),
+              ),
+            ],
+          ),
         ),
       ),
     );
