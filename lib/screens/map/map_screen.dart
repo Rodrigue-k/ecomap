@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:latlong2/latlong.dart' as latlong;
 import 'package:geolocator/geolocator.dart';
-import 'dart:async';
-import '../../core/theme/app_theme.dart';
-import '../../models/waste_bin.dart';
-import '../../providers/waste_bin_provider.dart';
-import '../../services/google_maps_service.dart';
+
+import 'package:EcoMap/core/theme/app_theme.dart';
+import 'package:EcoMap/models/waste_bin.dart';
+import 'package:EcoMap/providers/waste_bin_provider.dart';
+import 'package:EcoMap/screens/map/services/location_service.dart';
+import 'package:EcoMap/screens/map/services/marker_service.dart';
+import 'package:EcoMap/screens/map/widgets/custom_dialogs.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -18,208 +19,183 @@ class MapScreen extends ConsumerStatefulWidget {
 }
 
 class _MapScreenState extends ConsumerState<MapScreen> {
+  final LocationService _locationService = LocationService();
   gmaps.GoogleMapController? _mapController;
   latlong.LatLng? _currentLocation;
   final Set<gmaps.Marker> _markers = {};
-  bool _isLoading = false; // La carte s'affiche immédiatement
-  bool _locationPermissionGranted = false;
-
-  // Emplacement par défaut (Lomé, Togo)
-  final latlong.LatLng _defaultCenter = latlong.LatLng(6.1333, 1.2167);
-
-  // Conversion between LatLng types
-  gmaps.LatLng _toGoogleMapsLatLng(latlong.LatLng latLng) {
-    return gmaps.LatLng(latLng.latitude, latLng.longitude);
-  }
-
+  bool _isLoading = true;
+  
+  // Position par défaut (Lomé, Togo)
+  static const _defaultLocation = latlong.LatLng(6.1333, 1.2167);
+  
+  late final AppLifecycleListener _appLifecycleListener;
+  
   @override
   void initState() {
     super.initState();
-    // D'abord charger les poubelles
-    _loadWasteBins();
-    // Puis demander immédiatement la localisation
+    
+    // Configurer l'écouteur du cycle de vie de l'application
+    _appLifecycleListener = AppLifecycleListener(
+      onResume: _onAppResumed,
+    );
+    
+    // Charger les données après le premier rendu
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkAndRequestLocation();
+      // Charger les poubelles
+      _loadWasteBins();
+      
+      // Initialiser la localisation
+      _initializeLocation();
     });
   }
-
-  Future<void> _loadWasteBins() async {
-    // S'assure que le provider a fini de charger
-    await ref.read(wasteBinsProvider.future);
-    final bins = ref.read(wasteBinsProvider).value ?? [];
-    _updateMarkers(bins);
+  
+  // Charge les poubelles indépendamment de la localisation
+  void _loadWasteBins() {
+    if (!mounted) return;
+    
+    // Déclencher le chargement des poubelles via le Provider
+    // La mise à jour de l'interface sera gérée par le Consumer dans le build
+    ref.read(wasteBinsProvider);
+  }
+  
+  Future<void> _onAppResumed() async {
+    debugPrint('Application revenue au premier plan, vérification de la localisation...');
+    await _checkAndUpdateLocation();
+  }
+  
+  Future<void> _checkAndUpdateLocation() async {
+    try {
+      final serviceEnabled = await _locationService.isLocationServiceEnabled();
+      if (serviceEnabled) {
+        final permission = await _locationService.checkPermission();
+        if (permission == LocationPermission.whileInUse || 
+            permission == LocationPermission.always) {
+          final position = await _locationService.getCurrentPosition();
+          if (mounted) {
+            setState(() {
+              _currentLocation = position;
+            });
+            _centerMap();
+            _updateCurrentLocationMarker();
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Erreur lors de la mise à jour de la position: $e');
+    }
   }
 
-  // Méthode pour créer un dialogue stylisé
-  Widget _buildCustomDialog({
-    required String title,
-    required String content,
-    required List<Widget> actions,
-  }) {
-    return AlertDialog(
-      backgroundColor: AppTheme.surfaceColor,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 8,
-      title: Text(
-        title,
-        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-          color: AppTheme.textPrimary,
-          fontWeight: FontWeight.w600,
-        ),
+  @override
+  void dispose() {
+    _mapController?.dispose();
+    _appLifecycleListener.dispose();
+    super.dispose();
+  }
+
+  // Initialise la localisation et charge les données
+  Future<void> _initializeLocation() async {
+    try {
+      // Ne pas bloquer le chargement des poubelles sur la localisation
+      _isLoading = false;
+      
+      // Essayer d'obtenir la position actuelle en arrière-plan
+      _tryGetCurrentLocation();
+      
+    } catch (e) {
+      debugPrint('Erreur dans _initializeLocation: $e');
+      _isLoading = false;
+    }
+  }
+  
+  // Essaie d'obtenir la position actuelle sans bloquer l'interface
+  Future<void> _tryGetCurrentLocation() async {
+    try {
+      final serviceEnabled = await _locationService.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+      
+      var permission = await _locationService.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await _locationService.requestPermission();
+      }
+      
+      if (permission == LocationPermission.whileInUse || 
+          permission == LocationPermission.always) {
+        
+        final position = await _locationService.getCurrentPosition();
+        if (!mounted) return;
+        
+        setState(() {
+          _currentLocation = position;
+          _updateCurrentLocationMarker();
+          _centerMap();
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        });
+      }
+    } catch (e) {
+      debugPrint('Erreur lors de la récupération de la position: $e');
+      // Ne pas afficher de message d'erreur pour ne pas gêner l'utilisateur
+    }
+  }
+
+  // Centre la carte sur la position actuelle ou sur la position de test
+  void _centerMap() {
+    final position = _currentLocation ?? _defaultLocation;
+    _mapController?.animateCamera(
+      gmaps.CameraUpdate.newLatLngZoom(
+        MarkerService.toGoogleMapsLatLng(position),
+        _currentLocation != null ? 15 : 12, // Zoom plus large si pas de localisation
       ),
-      content: Text(
-        content,
-        style: Theme.of(
-          context,
-        ).textTheme.bodyLarge?.copyWith(color: AppTheme.textSecondary),
-      ),
-      actions: actions.map((action) {
-        if (action is TextButton) {
-          return TextButton(
-            style: TextButton.styleFrom(
-              foregroundColor:
-                  action.style?.foregroundColor?.resolve({}) ??
-                  AppTheme.primaryColor,
-              textStyle: Theme.of(context).textTheme.bodyLarge,
-            ),
-            onPressed: action.onPressed,
-            child: action.child!,
-          );
-        }
-        return action;
-      }).toList(),
-      actionsPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
     );
   }
 
-  Future<void> _checkAndRequestLocation() async {
+  // Affiche un message de succès
+  void _showSuccess(String message) {
     if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
 
-    // Vérifier si les services de localisation sont activés
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      // Demander d'activer les services de localisation
-      bool? shouldOpenSettings = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => _buildCustomDialog(
-          title: 'Localisation désactivée',
-          content: 'Les services de localisation sont nécessaires pour une meilleure expérience. Voulez-vous les activer ?',
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Plus tard'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Activer'),
-            ),
-          ],
-        ),
-      );
+  // Affiche un message d'erreur
+  void _showError(String title, String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$title: $message'),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
 
-      if (shouldOpenSettings == true) {
-        await Geolocator.openLocationSettings();
-      }
-      
-      if (mounted) {
-        setState(() => _locationPermissionGranted = false);
-      }
-      return;
-    }
-
-    // Vérifier et demander les permissions
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      // Demande explicite de permission
-      permission = await Geolocator.requestPermission();
-      
-      if (permission == LocationPermission.denied) {
-        if (mounted) {
-          setState(() => _locationPermissionGranted = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('La localisation est nécessaire pour une meilleure expérience')),
-          );
-        }
-        return;
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      // L'utilisateur a refusé définitivement, on propose d'aller dans les paramètres
-      bool? openSettings = await showDialog<bool>(
-        context: context,
-        builder: (context) => _buildCustomDialog(
-          title: 'Permission refusée',
-          content: 'La localisation est nécessaire. Veuillez l\'activer dans les paramètres de l\'application.',
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Annuler'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Paramètres'),
-            ),
-          ],
-        ),
-      );
-
-      if (openSettings == true) {
-        await Geolocator.openAppSettings();
-      }
-      
-      if (mounted) {
-        setState(() => _locationPermissionGranted = false);
-      }
-      return;
-    }
-
-    // Permission accordée
-    if (mounted) {
-      setState(() => _locationPermissionGranted = true);
-    }
-
-    // Récupérer la position actuelle
+  // Vérifie et met à jour la position actuelle
+  /*Future<void> _checkAndUpdateLocation() async {
     try {
-      final Position position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          distanceFilter: 0,
-        ),
-      );
-      if (mounted) {
-        setState(() {
-          _currentLocation = latlong.LatLng(
-            position.latitude,
-            position.longitude,
-          );
-        });
-        _centerMap();
-        _updateMarkers(ref.read(wasteBinsProvider).value ?? []);
+      if (await _locationService.isLocationServiceEnabled()) {
+        final permission = await _locationService.checkPermission();
+        if (permission == LocationPermission.denied) {
+          await _locationService.requestPermission();
+        } else if (permission == LocationPermission.whileInUse || 
+                  permission == LocationPermission.always) {
+          final position = await _locationService.getCurrentPosition();
+          if (mounted) {
+            setState(() {
+              _currentLocation = position;
+            });
+            _updateCurrentLocationMarker();
+            _centerMap();
+          }
+        }
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur lors de la récupération de la position : $e'),
-          ),
-        );
-      }
+      debugPrint('Erreur lors de la vérification de la localisation: $e');
     }
-  }
+  }*/
 
-  void _centerMap() {
-    if (_currentLocation != null && _mapController != null) {
-      _mapController!.animateCamera(
-        gmaps.CameraUpdate.newLatLngZoom(
-          _toGoogleMapsLatLng(_currentLocation!),
-          15,
-        ),
-      );
-    }
-  }
-
+  // Affiche les options pour une poubelle
   void _showBinOptions(WasteBin bin) {
     showModalBottomSheet(
       context: context,
@@ -227,17 +203,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
       ),
       backgroundColor: AppTheme.surfaceColor,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(16.0),
+      builder: (context) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
               leading: const Icon(Icons.delete, color: AppTheme.errorColor),
-              title: Text(
-                'Supprimer cette poubelle',
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
+              title: const Text('Supprimer cette poubelle'),
               onTap: () {
                 Navigator.pop(context);
                 _deleteBin(bin);
@@ -245,218 +217,253 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.cancel, color: AppTheme.textSecondary),
-              title: Text(
-                'Annuler',
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
+              title: const Text('Annuler'),
               onTap: () => Navigator.pop(context),
             ),
+            const SizedBox(height: 8), // Ajoute un espace en bas pour les appareils avec notch
           ],
         ),
       ),
     );
   }
 
+  // Supprime une poubelle après confirmation
   Future<void> _deleteBin(WasteBin bin) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await CustomDialogs.showConfirmationDialog(
       context: context,
-      builder: (context) => _buildCustomDialog(
-        title: 'Confirmer la suppression',
-        content: 'Voulez-vous vraiment supprimer cette poubelle ?',
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text(
-              'Supprimer',
-              style: TextStyle(color: AppTheme.errorColor),
-            ),
-          ),
-        ],
-      ),
+      title: 'Confirmer la suppression',
+      content: 'Voulez-vous vraiment supprimer cette poubelle ?',
+      confirmText: 'Supprimer',
     );
 
-    if (confirmed == true && mounted) {
+    if (confirmed && mounted) {
       try {
         await ref.read(wasteBinsProvider.notifier).deleteWasteBin(bin.id);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Poubelle supprimée avec succès')),
-          );
+          _showSuccess('Poubelle supprimée avec succès');
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Erreur: ${e.toString()}')));
+          _showError('Erreur', 'Impossible de supprimer la poubelle : $e');
         }
       }
     }
   }
 
-  Future<void> _updateMarkers(List<WasteBin> bins) async {
-    // Éviter les mises à jour si les données n'ont pas changé
-    final currentBins = ref.read(wasteBinsProvider).value ?? [];
-    if (currentBins == bins && _markers.isNotEmpty) return;
-
-    final markerIcon = await GoogleMapsService.getMarkerIcon(null);
-    final currentLocationIcon = await BitmapDescriptor.asset(
-      const ImageConfiguration(size: Size(35, 35)),
-      'assets/images/current_location.png',
-    );
-
-    final markers = {
-      ...bins.map(
-        (bin) => gmaps.Marker(
-          markerId: gmaps.MarkerId(bin.id),
-          position: gmaps.LatLng(bin.location.latitude, bin.location.longitude),
-          icon: markerIcon,
-          infoWindow: gmaps.InfoWindow(
-            title: 'Poubelle #${bin.id.substring(0, 5)}',
-          ),
-          onTap: () => _showBinOptions(bin),
-        ),
-      ),
-      if (_currentLocation != null)
-        gmaps.Marker(
-          markerId: const gmaps.MarkerId('current_location'),
-          position: _toGoogleMapsLatLng(_currentLocation!),
-          icon: currentLocationIcon,
-          infoWindow: const gmaps.InfoWindow(title: 'Votre position'),
-          onTap: _showAddBinDialog,
-        ),
-    };
-
-    if (mounted) {
+  // Met à jour les marqueurs des poubelles
+  Future<void> _updateWasteBinMarkers(List<WasteBin> bins) async {
+    if (!mounted) return;
+    
+    debugPrint('Mise à jour de ${bins.length} marqueurs de poubelles');
+    
+    try {
+      final markers = <gmaps.Marker>[];
+      
+      // Créer les marqueurs de manière séquentielle pour éviter les problèmes de concurrence
+      for (final bin in bins) {
+        try {
+          final marker = await MarkerService.createWasteBinMarker(
+            bin,
+            () => _showBinOptions(bin),
+          );
+          markers.add(marker);
+        } catch (e) {
+          debugPrint('Erreur création marqueur poubelle ${bin.id}: $e');
+        }
+      }
+      
+      if (!mounted) return;
+      
       setState(() {
-        _markers.clear();
+        // Supprimer uniquement les marqueurs de poubelles
+        _markers.removeWhere((m) => m.markerId.value != 'current_location');
         _markers.addAll(markers);
+        debugPrint('${_markers.length} marqueurs affichés sur la carte');
       });
+      
+    } catch (e) {
+      debugPrint('Erreur lors de la mise à jour des marqueurs: $e');
+    } 
+  }
+
+  // Met à jour le marqueur de position actuelle
+  Future<void> _updateCurrentLocationMarker() async {
+    if (!mounted || _currentLocation == null) return;
+    
+    try {
+      final currentLocationMarker = await MarkerService.createCurrentLocationMarker(
+        _currentLocation!,
+        _showAddBinDialog,
+      );
+      
+      if (mounted) {
+        setState(() {
+          // Supprimer l'ancien marqueur de position
+          _markers.removeWhere((m) => m.markerId.value == 'current_location');
+          _markers.add(currentLocationMarker);
+        });
+      }
+    } catch (e) {
+      debugPrint('Erreur mise à jour marqueur position: $e');
     }
   }
 
-  void _showAddBinDialog() {
+  // Affiche la boîte de dialogue pour ajouter une poubelle
+  Future<void> _showAddBinDialog() async {
     if (_currentLocation == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Position actuelle non disponible. Veuillez réessayer.',
-          ),
-        ),
-      );
+      _showError('Erreur', 'Position actuelle non disponible');
       return;
     }
 
-    showDialog(
+    final confirmed = await CustomDialogs.showConfirmationDialog(
       context: context,
-      builder: (context) => _buildCustomDialog(
-        title: 'Ajouter une poubelle',
-        content:
-            'Ajouter une poubelle à votre position actuelle :\n'
-            'Lat: ${_currentLocation!.latitude.toStringAsFixed(6)}, '
-            'Lon: ${_currentLocation!.longitude.toStringAsFixed(6)}',
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              try {
-                await ref
-                    .read(wasteBinsProvider.notifier)
-                    .addWasteBin(_currentLocation!);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Poubelle ajoutée avec succès'),
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Erreur: ${e.toString()}')),
-                  );
-                }
+      title: 'Ajouter une poubelle',
+      content: 'Ajouter une poubelle à votre position actuelle ?\n'
+          'Lat: ${_currentLocation!.latitude.toStringAsFixed(6)}\n'
+          'Lon: ${_currentLocation!.longitude.toStringAsFixed(6)}',
+      confirmText: 'Ajouter',
+    );
+
+    if (confirmed && mounted) {
+      try {
+        await ref.read(wasteBinsProvider.notifier).addWasteBin(_currentLocation!);
+        if (mounted) {
+          _showSuccess('Poubelle ajoutée avec succès');
+        }
+      } catch (e) {
+        if (mounted) {
+          _showError('Erreur', 'Impossible d\'ajouter la poubelle : $e');
+        }
+      }
+    }
+  }
+
+
+  // Construit la carte Google Maps
+  Widget _buildMap() {
+    debugPrint('Création de la carte avec ${_markers.length} marqueurs');
+    
+    // Utiliser la position actuelle si disponible, sinon utiliser la position de test
+    final initialPosition = _currentLocation ?? _defaultLocation;
+    debugPrint('Position initiale de la carte: ${initialPosition.latitude}, ${initialPosition.longitude}');
+    
+    // Créer la position initiale de la caméra
+    final cameraPosition = gmaps.CameraPosition(
+      target: MarkerService.toGoogleMapsLatLng(initialPosition),
+      zoom: _currentLocation != null ? 15 : 12, // Zoom plus large si pas de localisation
+    );
+    
+    return Stack(
+      children: [
+        gmaps.GoogleMap(
+          onMapCreated: (controller) {
+            _mapController = controller;
+            debugPrint('Carte créée avec succès');
+            
+            // Centrer la carte sur la position initiale
+            _centerMap();
+            
+            // Vérifier la région visible après un court délai
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (mounted && _mapController != null) {
+                _mapController!.getVisibleRegion().then((region) {
+                  debugPrint('Région visible après création: $region');
+                });
               }
-            },
-            child: const Text('Ajouter'),
-          ),
-        ],
-      ),
+            });
+          },
+          initialCameraPosition: cameraPosition,
+          myLocationEnabled: _currentLocation != null,
+          myLocationButtonEnabled: false,
+          markers: _markers,
+          onTap: (_) {
+            // Gérer les appuis sur la carte si nécessaire
+          },
+          onCameraIdle: () {
+            // Vérifier la région visible quand la caméra s'arrête de bouger
+            if (_mapController != null) {
+              _mapController!.getVisibleRegion().then((region) {
+                debugPrint('Région visible après déplacement: $region');
+              });
+            }
+          },
+        ),
+    
+      ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Observer le provider pour reconstruire le widget quand les données changent
-    ref.watch(wasteBinsProvider).when(
-          data: (bins) => _updateMarkers(bins),
-          loading: () {},
-          error: (e, s) => ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erreur de chargement des poubelles: $e')),
-          ),
-        );
-
     return Scaffold(
-      appBar: AppBar(title: const Text('Carte EcoMap')),
+      appBar: AppBar(
+        title: const Text('Carte EcoMap'),
+      ),
       body: Stack(
         children: [
-          gmaps.GoogleMap(
-            onMapCreated: (controller) {
-              _mapController = controller;
-              _centerMap(); // Centrer la carte lors de sa création
+          // Carte Google Maps
+          Consumer(
+            builder: (context, ref, child) {
+              // Observer les changements de la liste des poubelles
+              final wasteBinsAsync = ref.watch(wasteBinsProvider);
+              
+              // Mettre à jour les marqueurs quand les données changent
+              return wasteBinsAsync.when(
+                data: (bins) {
+                  if (mounted) {
+                    // Utiliser un délai pour éviter les mises à jour pendant le build
+                    Future.microtask(() => _updateWasteBinMarkers(bins));
+                  }
+                  return _buildMap();
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, stack) {
+                  debugPrint('Erreur lors du chargement des poubelles: $error');
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text('Erreur lors du chargement des poubelles'),
+                        TextButton(
+                          onPressed: _loadWasteBins,
+                          child: const Text('Réessayer'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              );
             },
-            initialCameraPosition: gmaps.CameraPosition(
-              target: _toGoogleMapsLatLng(_currentLocation ?? _defaultCenter),
-              zoom: 12,
-            ),
-            myLocationEnabled: _locationPermissionGranted,
-            myLocationButtonEnabled: false,
-            markers: _markers,
           ),
-          if (!_locationPermissionGranted)
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: MaterialBanner(
-                backgroundColor: AppTheme.surfaceColor.withOpacity(0.9),
-                content: const Text(
-                  'Activez la localisation pour une meilleure expérience.',
-                  style: TextStyle(color: AppTheme.textPrimary),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () async {
-                      await Geolocator.openAppSettings();
-                    },
-                    child: const Text('PARAMÈTRES'),
-                  ),
-                ],
-              ),
+          
+          // Indicateur de chargement
+          if (_isLoading)
+            const Center(
+              child: CircularProgressIndicator(),
             ),
         ],
       ),
       floatingActionButton: Padding(
-        padding: EdgeInsets.only(bottom: 80.0),
-        child: FloatingActionButton(
-          onPressed: _centerMap,
-          tooltip: 'Recentrer sur ma position',
-          child: const Icon(Icons.gps_fixed),
+        padding: const EdgeInsets.only(bottom: 100.0, right: 0.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FloatingActionButton(
+              heroTag: 'gps_button',
+              onPressed: _centerMap,
+              tooltip: 'Recentrer sur ma position',
+              child: const Icon(Icons.gps_fixed),
+            ),
+            const SizedBox(height: 16),
+            FloatingActionButton(
+              heroTag: 'add_bin_button',
+              onPressed: _showAddBinDialog,
+              tooltip: 'Ajouter une poubelle',
+              child: const Icon(Icons.add),
+            ),
+          ],
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _mapController?.dispose();
-    super.dispose();
   }
 }
