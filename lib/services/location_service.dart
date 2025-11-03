@@ -49,18 +49,23 @@ class LocationService {
         desiredAccuracy: LocationAccuracy.best,
         timeLimit: const Duration(seconds: 15),
       );
-      AppLogger.d('Current position: (${position.latitude}, ${position.longitude}), accuracy: ${position.accuracy}');
-      
+      AppLogger.d(
+        'Current position: (${position.latitude}, ${position.longitude}), accuracy: ${position.accuracy}',
+      );
+
       // Vérifier la précision de la position
-      if (position.accuracy > 20) { // Si la précision est supérieure à 20 mètres
+      if (position.accuracy > 20) {
+        // Si la précision est supérieure à 20 mètres
         // Essayer d'obtenir une position plus précise
         position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high,
           timeLimit: const Duration(seconds: 10),
         );
-        AppLogger.d('Refined position: (${position.latitude}, ${position.longitude}), accuracy: ${position.accuracy}');
+        AppLogger.d(
+          'Refined position: (${position.latitude}, ${position.longitude}), accuracy: ${position.accuracy}',
+        );
       }
-      
+
       return LatLng(position.latitude, position.longitude);
     } catch (e, st) {
       AppLogger.e('Error in getCurrentLocation', e, st);
@@ -75,7 +80,9 @@ class LocationService {
     try {
       Position? position = await Geolocator.getLastKnownPosition();
       if (position != null) {
-        AppLogger.d('Last known position: (${position.latitude}, ${position.longitude}), accuracy: ${position.accuracy}');
+        AppLogger.d(
+          'Last known position: (${position.latitude}, ${position.longitude}), accuracy: ${position.accuracy}',
+        );
         return LatLng(position.latitude, position.longitude);
       }
       return null;
@@ -87,15 +94,15 @@ class LocationService {
 
   static Future<bool> requestLocationPermission() async {
     LocationPermission permission = await Geolocator.checkPermission();
-    
+
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      return permission == LocationPermission.whileInUse || 
-             permission == LocationPermission.always;
+      return permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always;
     }
-    
-    return permission == LocationPermission.whileInUse || 
-           permission == LocationPermission.always;
+
+    return permission == LocationPermission.whileInUse ||
+        permission == LocationPermission.always;
   }
 
   static Future<bool> isLocationServiceEnabled() async {
@@ -189,7 +196,9 @@ class LocationService {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Permission de localisation refusée définitivement'),
+          title: const Text(
+            'Permission de localisation refusée définitivement',
+          ),
           content: const Text(
             'Vous avez refusé définitivement l\'accès à la localisation. Veuillez l\'activer manuellement dans les paramètres de l\'application.',
           ),

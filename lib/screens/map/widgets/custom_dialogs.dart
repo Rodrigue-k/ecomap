@@ -13,11 +13,8 @@ class CustomDialogs {
     return showDialog<T>(
       context: context,
       barrierDismissible: barrierDismissible,
-      builder: (context) => _buildCustomDialog(
-        title: title,
-        content: content,
-        actions: actions,
-      ),
+      builder: (context) =>
+          _buildCustomDialog(title: title, content: content, actions: actions),
     );
   }
 
@@ -41,10 +38,7 @@ class CustomDialogs {
       ),
       content: Text(
         content,
-        style: const TextStyle(
-          color: AppTheme.textSecondary,
-          fontSize: 16,
-        ),
+        style: const TextStyle(color: AppTheme.textSecondary, fontSize: 16),
       ),
       actions: actions.map((action) {
         if (action is TextButton) {

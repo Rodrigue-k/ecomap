@@ -1,5 +1,3 @@
-
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:latlong2/latlong.dart' as latlong;
@@ -13,9 +11,12 @@ class MarkerService {
   }
 
   // Crée un marqueur pour une poubelle
-  static Future<gmaps.Marker> createWasteBinMarker(WasteBin bin, Function() onTap) async {
+  static Future<gmaps.Marker> createWasteBinMarker(
+    WasteBin bin,
+    Function() onTap,
+  ) async {
     final markerIcon = await GoogleMapsService.getMarkerIcon(null);
-    
+
     return gmaps.Marker(
       markerId: gmaps.MarkerId(bin.id),
       position: gmaps.LatLng(bin.location.latitude, bin.location.longitude),
@@ -29,14 +30,11 @@ class MarkerService {
 
   // Crée un marqueur pour la position actuelle
   static Future<gmaps.Marker> createCurrentLocationMarker(
-    latlong.LatLng position, 
+    latlong.LatLng position,
     Function() onTap,
   ) async {
     final currentLocationIcon = await gmaps.BitmapDescriptor.fromAssetImage(
-      const ImageConfiguration(
-        devicePixelRatio: 1.0,
-        size: Size(35, 35),
-      ),
+      const ImageConfiguration(devicePixelRatio: 1.0, size: Size(35, 35)),
       'assets/images/current_location.png',
     );
 

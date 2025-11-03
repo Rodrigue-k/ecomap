@@ -17,7 +17,8 @@ class WasteBin {
   });
 
   // Conversion vers latlong.LatLng
-  latlong.LatLng get latLng => latlong.LatLng(location.latitude, location.longitude);
+  latlong.LatLng get latLng =>
+      latlong.LatLng(location.latitude, location.longitude);
 
   factory WasteBin.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;

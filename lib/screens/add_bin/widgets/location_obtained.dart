@@ -6,7 +6,7 @@ class LocationObtainedWidget extends StatelessWidget {
   final double accuracy;
   final bool isLoading;
   final VoidCallback onAddBin;
-  
+
   const LocationObtainedWidget({
     super.key,
     required this.location,
@@ -20,8 +20,8 @@ class LocationObtainedWidget extends StatelessWidget {
     final accuracyColor = accuracy <= 10
         ? Colors.green
         : accuracy <= 20
-            ? Colors.orange
-            : Colors.red;
+        ? Colors.orange
+        : Colors.red;
 
     return Center(
       child: Column(

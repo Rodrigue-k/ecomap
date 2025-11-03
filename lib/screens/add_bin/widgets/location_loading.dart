@@ -2,11 +2,8 @@ import 'package:flutter/material.dart';
 
 class LocationLoadingWidget extends StatelessWidget {
   final String message;
-  
-  const LocationLoadingWidget({
-    super.key,
-    required this.message,
-  });
+
+  const LocationLoadingWidget({super.key, required this.message});
 
   @override
   Widget build(BuildContext context) {

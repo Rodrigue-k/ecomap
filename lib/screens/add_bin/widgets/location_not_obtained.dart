@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class LocationNotObtainedWidget extends StatelessWidget {
   final bool hasPermission;
   final VoidCallback onGetLocation;
-  
+
   const LocationNotObtainedWidget({
     super.key,
     required this.hasPermission,
@@ -23,8 +23,8 @@ class LocationNotObtainedWidget extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            hasPermission 
-                ? 'Aucune localisation obtenue' 
+            hasPermission
+                ? 'Aucune localisation obtenue'
                 : 'Permission de localisation requise',
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             textAlign: TextAlign.center,

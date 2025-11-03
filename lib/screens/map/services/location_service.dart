@@ -4,16 +4,20 @@ import 'package:latlong2/latlong.dart' as latlong;
 
 class LocationServiceDisabledException implements Exception {
   final String message;
-  LocationServiceDisabledException([this.message = 'Le service de localisation est désactivé']);
-  
+  LocationServiceDisabledException([
+    this.message = 'Le service de localisation est désactivé',
+  ]);
+
   @override
   String toString() => message;
 }
 
 class PermissionDeniedException implements Exception {
   final String message;
-  PermissionDeniedException([this.message = 'Permission de localisation refusée']);
-  
+  PermissionDeniedException([
+    this.message = 'Permission de localisation refusée',
+  ]);
+
   @override
   String toString() => message;
 }
@@ -51,14 +55,14 @@ class LocationService {
     if (!serviceEnabled) {
       throw LocationServiceDisabledException();
     }
-    
+
     // Vérifier les permissions
     var permission = await checkPermission();
-    if (permission == LocationPermission.denied || 
+    if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
       throw PermissionDeniedException();
     }
-    
+
     try {
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,

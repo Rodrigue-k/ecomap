@@ -64,10 +64,7 @@ class SnackBarManager {
   }
 
   /// Affiche une notification permanente avec une action optionnelle
-  static void showPermanentSnackBar(
-    String message, {
-    SnackBarAction? action,
-  }) {
+  static void showPermanentSnackBar(String message, {SnackBarAction? action}) {
     _scaffoldMessengerKey.currentState?.showSnackBar(
       SnackBar(
         content: Text(
@@ -75,7 +72,9 @@ class SnackBarManager {
           style: const TextStyle(color: AppTheme.textPrimary),
         ),
         backgroundColor: AppTheme.primaryColor,
-        duration: const Duration(days: 1), // Durée très longue pour un effet "permanent"
+        duration: const Duration(
+          days: 1,
+        ), // Durée très longue pour un effet "permanent"
         action: action,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(

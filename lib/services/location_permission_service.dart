@@ -5,15 +5,23 @@ import '../core/app_logger.dart';
 
 class LocationPermissionService {
   /// Vérifie et demande les permissions de localisation nécessaires
-  static Future<bool> requestLocationPermissionForAddingBin(BuildContext context) async {
-    AppLogger.i('LocationPermissionService: Vérification des permissions de localisation');
-    
+  static Future<bool> requestLocationPermissionForAddingBin(
+    BuildContext context,
+  ) async {
+    AppLogger.i(
+      'LocationPermissionService: Vérification des permissions de localisation',
+    );
+
     // Vérifier d'abord si les services de localisation sont activés
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    AppLogger.d('LocationPermissionService: Services de localisation activés: $serviceEnabled');
-    
+    AppLogger.d(
+      'LocationPermissionService: Services de localisation activés: $serviceEnabled',
+    );
+
     if (!serviceEnabled) {
-      AppLogger.w('LocationPermissionService: Services de localisation désactivés');
+      AppLogger.w(
+        'LocationPermissionService: Services de localisation désactivés',
+      );
       await _showLocationServiceDialog(context);
       return false;
     }
@@ -21,13 +29,15 @@ class LocationPermissionService {
     // Vérifier les permissions
     LocationPermission permission = await Geolocator.checkPermission();
     AppLogger.d('LocationPermissionService: Permission actuelle: $permission');
-    
+
     if (permission == LocationPermission.denied) {
       // Demander la permission
       AppLogger.i('LocationPermissionService: Demande de permission...');
       permission = await Geolocator.requestPermission();
-      AppLogger.d('LocationPermissionService: Permission après demande: $permission');
-      
+      AppLogger.d(
+        'LocationPermissionService: Permission après demande: $permission',
+      );
+
       if (permission == LocationPermission.denied) {
         AppLogger.w('LocationPermissionService: Permission refusée');
         await _showPermissionDeniedDialog(context);
@@ -36,29 +46,39 @@ class LocationPermissionService {
     }
 
     if (permission == LocationPermission.deniedForever) {
-      AppLogger.w('LocationPermissionService: Permission refusée définitivement');
+      AppLogger.w(
+        'LocationPermissionService: Permission refusée définitivement',
+      );
       await _showPermissionPermanentlyDeniedDialog(context);
       return false;
     }
 
     // Vérifier la permission avec permission_handler pour plus de contrôle
     PermissionStatus status = await Permission.location.status;
-    AppLogger.d('LocationPermissionService: Status permission_handler: $status');
-    
+    AppLogger.d(
+      'LocationPermissionService: Status permission_handler: $status',
+    );
+
     if (status.isDenied) {
-      AppLogger.i('LocationPermissionService: Demande de permission via permission_handler...');
+      AppLogger.i(
+        'LocationPermissionService: Demande de permission via permission_handler...',
+      );
       status = await Permission.location.request();
       AppLogger.d('LocationPermissionService: Status après demande: $status');
-      
+
       if (status.isDenied) {
-        AppLogger.w('LocationPermissionService: Permission refusée via permission_handler');
+        AppLogger.w(
+          'LocationPermissionService: Permission refusée via permission_handler',
+        );
         await _showPermissionDeniedDialog(context);
         return false;
       }
     }
 
     if (status.isPermanentlyDenied) {
-      AppLogger.w('LocationPermissionService: Permission refusée définitivement via permission_handler');
+      AppLogger.w(
+        'LocationPermissionService: Permission refusée définitivement via permission_handler',
+      );
       await _showPermissionPermanentlyDeniedDialog(context);
       return false;
     }
@@ -69,8 +89,10 @@ class LocationPermissionService {
 
   /// Vérifie si la localisation est suffisamment précise pour ajouter une poubelle
   static Future<bool> isLocationAccurateEnough(BuildContext context) async {
-    AppLogger.i('LocationPermissionService: Vérification de la précision de localisation');
-    
+    AppLogger.i(
+      'LocationPermissionService: Vérification de la précision de localisation',
+    );
+
     try {
       // Obtenir la position avec une précision élevée
       Position position = await Geolocator.getCurrentPosition(
@@ -78,19 +100,30 @@ class LocationPermissionService {
         timeLimit: const Duration(seconds: 30),
       );
 
-      AppLogger.d('LocationPermissionService: Position obtenue - Précision: ${position.accuracy}m, Altitude: ${position.altitude}m, Vitesse: ${position.speed}m/s');
+      AppLogger.d(
+        'LocationPermissionService: Position obtenue - Précision: ${position.accuracy}m, Altitude: ${position.altitude}m, Vitesse: ${position.speed}m/s',
+      );
 
       // Vérifier la précision (en mètres) - plus permissif pour les tests
-      if (position.accuracy > 20) { // Augmenté à 20 mètres pour les tests
-        AppLogger.w('LocationPermissionService: Précision insuffisante: ${position.accuracy}m');
+      if (position.accuracy > 20) {
+        // Augmenté à 20 mètres pour les tests
+        AppLogger.w(
+          'LocationPermissionService: Précision insuffisante: ${position.accuracy}m',
+        );
         await _showLowAccuracyDialog(context, position.accuracy);
         return false;
       }
 
-      AppLogger.i('LocationPermissionService: Précision suffisante: ${position.accuracy}m');
+      AppLogger.i(
+        'LocationPermissionService: Précision suffisante: ${position.accuracy}m',
+      );
       return true;
     } catch (e, stackTrace) {
-      AppLogger.e('LocationPermissionService: Erreur lors de la vérification de précision', e, stackTrace);
+      AppLogger.e(
+        'LocationPermissionService: Erreur lors de la vérification de précision',
+        e,
+        stackTrace,
+      );
       await _showLocationErrorDialog(context, e.toString());
       return false;
     }
@@ -99,85 +132,119 @@ class LocationPermissionService {
   /// Obtient la position actuelle avec vérification de précision améliorée
   static Future<Position?> getAccurateLocation(BuildContext context) async {
     AppLogger.i('LocationPermissionService: Obtention de la position précise');
-    
+
     try {
       // Première tentative avec la meilleure précision
-      AppLogger.d('LocationPermissionService: Première tentative avec LocationAccuracy.best');
+      AppLogger.d(
+        'LocationPermissionService: Première tentative avec LocationAccuracy.best',
+      );
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.best,
         timeLimit: const Duration(seconds: 30),
       );
 
-      AppLogger.d('LocationPermissionService: Première position - Précision: ${position.accuracy}m');
+      AppLogger.d(
+        'LocationPermissionService: Première position - Précision: ${position.accuracy}m',
+      );
 
       // Si la précision n'est pas suffisante, essayer d'améliorer
       if (position.accuracy > 20) {
-        AppLogger.i('LocationPermissionService: Précision insuffisante, tentative d\'amélioration...');
-        
+        AppLogger.i(
+          'LocationPermissionService: Précision insuffisante, tentative d\'amélioration...',
+        );
+
         // Attendre un peu et essayer à nouveau
         await Future.delayed(const Duration(seconds: 3));
-        
-        AppLogger.d('LocationPermissionService: Deuxième tentative avec LocationAccuracy.high');
+
+        AppLogger.d(
+          'LocationPermissionService: Deuxième tentative avec LocationAccuracy.high',
+        );
         position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high,
           timeLimit: const Duration(seconds: 20),
         );
-        
-        AppLogger.d('LocationPermissionService: Deuxième position - Précision: ${position.accuracy}m');
-        
+
+        AppLogger.d(
+          'LocationPermissionService: Deuxième position - Précision: ${position.accuracy}m',
+        );
+
         // Si toujours pas assez précis, essayer une dernière fois
         if (position.accuracy > 20) {
-          AppLogger.i('LocationPermissionService: Précision toujours insuffisante, dernière tentative...');
+          AppLogger.i(
+            'LocationPermissionService: Précision toujours insuffisante, dernière tentative...',
+          );
           await Future.delayed(const Duration(seconds: 2));
-          
+
           position = await Geolocator.getCurrentPosition(
             desiredAccuracy: LocationAccuracy.medium,
             timeLimit: const Duration(seconds: 15),
           );
-          
-          AppLogger.d('LocationPermissionService: Position finale - Précision: ${position.accuracy}m');
+
+          AppLogger.d(
+            'LocationPermissionService: Position finale - Précision: ${position.accuracy}m',
+          );
         }
       }
 
       // Vérifier si on a une position utilisable
-      if (position.accuracy <= 50) { // Accepte jusqu'à 50m pour les tests
-        AppLogger.i('LocationPermissionService: Position obtenue avec succès - Précision: ${position.accuracy}m');
+      if (position.accuracy <= 50) {
+        // Accepte jusqu'à 50m pour les tests
+        AppLogger.i(
+          'LocationPermissionService: Position obtenue avec succès - Précision: ${position.accuracy}m',
+        );
         return position;
       } else {
-        AppLogger.w('LocationPermissionService: Précision finale insuffisante: ${position.accuracy}m');
+        AppLogger.w(
+          'LocationPermissionService: Précision finale insuffisante: ${position.accuracy}m',
+        );
         await _showLowAccuracyDialog(context, position.accuracy);
         return null;
       }
     } catch (e, stackTrace) {
-      AppLogger.e('LocationPermissionService: Erreur lors de l\'obtention de la position', e, stackTrace);
+      AppLogger.e(
+        'LocationPermissionService: Erreur lors de l\'obtention de la position',
+        e,
+        stackTrace,
+      );
       await _showLocationErrorDialog(context, e.toString());
       return null;
     }
   }
 
   /// Obtient la position avec plusieurs tentatives et affichage du progrès
-  static Future<Position?> getLocationWithProgress(BuildContext context, Function(String) onProgressUpdate) async {
-    AppLogger.i('LocationPermissionService: Obtention de position avec progrès');
-    
+  static Future<Position?> getLocationWithProgress(
+    BuildContext context,
+    Function(String) onProgressUpdate,
+  ) async {
+    AppLogger.i(
+      'LocationPermissionService: Obtention de position avec progrès',
+    );
+
     try {
       onProgressUpdate('Initialisation de la localisation...');
       await Future.delayed(const Duration(milliseconds: 500));
-      
+
       onProgressUpdate('Recherche du signal GPS...');
       await Future.delayed(const Duration(milliseconds: 1000));
-      
+
       onProgressUpdate('Obtention de la position précise...');
-      
+
       final position = await getAccurateLocation(context);
-      
+
       if (position != null) {
-        onProgressUpdate('Position obtenue avec une précision de ${position.accuracy.toStringAsFixed(1)}m');
+        onProgressUpdate(
+          'Position obtenue avec une précision de ${position.accuracy.toStringAsFixed(1)}m',
+        );
         await Future.delayed(const Duration(milliseconds: 1000));
       }
-      
+
       return position;
     } catch (e, stackTrace) {
-      AppLogger.e('LocationPermissionService: Erreur dans getLocationWithProgress', e, stackTrace);
+      AppLogger.e(
+        'LocationPermissionService: Erreur dans getLocationWithProgress',
+        e,
+        stackTrace,
+      );
       onProgressUpdate('Erreur lors de l\'obtention de la position');
       return null;
     }
@@ -185,13 +252,17 @@ class LocationPermissionService {
 
   /// Ouvre les paramètres de localisation
   static Future<void> openLocationSettings() async {
-    AppLogger.i('LocationPermissionService: Ouverture des paramètres de localisation');
+    AppLogger.i(
+      'LocationPermissionService: Ouverture des paramètres de localisation',
+    );
     await Geolocator.openLocationSettings();
   }
 
   /// Ouvre les paramètres de l'application
   static Future<void> openAppSettings() async {
-    AppLogger.i('LocationPermissionService: Ouverture des paramètres de l\'application');
+    AppLogger.i(
+      'LocationPermissionService: Ouverture des paramètres de l\'application',
+    );
     await openAppSettings();
   }
 
@@ -244,12 +315,15 @@ class LocationPermissionService {
             ElevatedButton(
               onPressed: () async {
                 Navigator.of(context).pop();
-                LocationPermission permission = await Geolocator.requestPermission();
+                LocationPermission permission =
+                    await Geolocator.requestPermission();
                 if (permission == LocationPermission.denied) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Permission refusée. Impossible d\'ajouter une poubelle.'),
+                        content: Text(
+                          'Permission refusée. Impossible d\'ajouter une poubelle.',
+                        ),
                         backgroundColor: Colors.red,
                       ),
                     );
@@ -264,13 +338,17 @@ class LocationPermissionService {
     );
   }
 
-  static Future<void> _showPermissionPermanentlyDeniedDialog(BuildContext context) async {
+  static Future<void> _showPermissionPermanentlyDeniedDialog(
+    BuildContext context,
+  ) async {
     return showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Permission de localisation refusée définitivement'),
+          title: const Text(
+            'Permission de localisation refusée définitivement',
+          ),
           content: const Text(
             'Vous avez refusé définitivement l\'accès à la localisation. '
             'Pour ajouter des poubelles, vous devez activer manuellement cette permission dans les paramètres.',
@@ -293,7 +371,10 @@ class LocationPermissionService {
     );
   }
 
-  static Future<void> _showLowAccuracyDialog(BuildContext context, double accuracy) async {
+  static Future<void> _showLowAccuracyDialog(
+    BuildContext context,
+    double accuracy,
+  ) async {
     return showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -322,7 +403,10 @@ class LocationPermissionService {
     );
   }
 
-  static Future<void> _showLocationErrorDialog(BuildContext context, String error) async {
+  static Future<void> _showLocationErrorDialog(
+    BuildContext context,
+    String error,
+  ) async {
     return showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -344,4 +428,3 @@ class LocationPermissionService {
     );
   }
 }
-

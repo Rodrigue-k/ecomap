@@ -7,19 +7,19 @@ class AppTheme {
   static const Color primaryVariant = Color(0xFF388E3C);
   static const Color secondaryColor = Color(0xFF8BC34A);
   static const Color accentColor = Color(0xFFFF9800);
-  
+
   // Couleurs de statut
   static const Color successColor = Color(0xFF4CAF50);
   static const Color warningColor = Color(0xFFFF9800);
   static const Color errorColor = Color(0xFFF44336);
   static const Color infoColor = Color(0xFF2196F3);
-  
+
   // Couleurs neutres
   static const Color backgroundColor = Color(0xFFF5F5F5);
   static const Color surfaceColor = Colors.white;
   static const Color textPrimary = Color(0xFF212121);
   static const Color textSecondary = Color(0xFF757575);
-  
+
   // Couleurs des poubelles
   static const Color binGeneral = Color(0xFF4CAF50);
   static const Color binRecyclable = Color(0xFFFF9800);
@@ -36,7 +36,7 @@ class AppTheme {
         seedColor: primaryColor,
         brightness: Brightness.light,
       ),
-      
+
       // Typographie
       textTheme: GoogleFonts.poppinsTextTheme().copyWith(
         displayLarge: GoogleFonts.poppins(
@@ -69,16 +69,10 @@ class AppTheme {
           fontWeight: FontWeight.w500,
           color: textPrimary,
         ),
-        bodyLarge: GoogleFonts.poppins(
-          fontSize: 16,
-          color: textPrimary,
-        ),
-        bodyMedium: GoogleFonts.poppins(
-          fontSize: 14,
-          color: textSecondary,
-        ),
+        bodyLarge: GoogleFonts.poppins(fontSize: 16, color: textPrimary),
+        bodyMedium: GoogleFonts.poppins(fontSize: 14, color: textSecondary),
       ),
-      
+
       // AppBar
       appBarTheme: AppBarTheme(
         backgroundColor: primaryColor,
@@ -91,7 +85,7 @@ class AppTheme {
           color: Colors.white,
         ),
       ),
-      
+
       // Boutons
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -99,21 +93,17 @@ class AppTheme {
           foregroundColor: Colors.white,
           elevation: 2,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
-      
+
       // Cartes
       cardTheme: CardThemeData(
         elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(8),
       ),
-      
+
       // Inputs
       inputDecorationTheme: InputDecorationTheme(
         border: OutlineInputBorder(
@@ -124,9 +114,12 @@ class AppTheme {
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: primaryColor, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
       ),
-      
+
       // Bottom Navigation Bar
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: surfaceColor,
@@ -138,4 +131,3 @@ class AppTheme {
     );
   }
 }
-

@@ -37,8 +37,10 @@ class AddBinState {
       selectedLocation: selectedLocation ?? this.selectedLocation,
       isLoading: isLoading ?? this.isLoading,
       isLocationLoading: isLocationLoading ?? this.isLocationLoading,
-      hasLocationPermission: hasLocationPermission ?? this.hasLocationPermission,
-      locationProgressMessage: locationProgressMessage ?? this.locationProgressMessage,
+      hasLocationPermission:
+          hasLocationPermission ?? this.hasLocationPermission,
+      locationProgressMessage:
+          locationProgressMessage ?? this.locationProgressMessage,
       locationAccuracy: locationAccuracy ?? this.locationAccuracy,
     );
   }
@@ -49,8 +51,10 @@ class AddBinController extends StateNotifier<AddBinState> {
 
   Future<void> checkLocationPermission(BuildContext? context) async {
     AppLogger.i('Vérification des permissions de localisation');
-    final hasPermission = await LocationPermissionService
-        .requestLocationPermissionForAddingBin(context!);
+    final hasPermission =
+        await LocationPermissionService.requestLocationPermissionForAddingBin(
+          context!,
+        );
 
     state = state.copyWith(hasLocationPermission: hasPermission);
 
@@ -90,7 +94,7 @@ class AddBinController extends StateNotifier<AddBinState> {
 
         AppLogger.i('Localisation réussie - Précision: ${position.accuracy}m');
 
-        if (context != null && context.mounted) {
+        if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -105,7 +109,11 @@ class AddBinController extends StateNotifier<AddBinState> {
         _handleLocationError(context, 'Échec de la localisation');
       }
     } catch (e, stackTrace) {
-      AppLogger.e('Erreur lors de l\'obtention de la localisation', e, stackTrace);
+      AppLogger.e(
+        'Erreur lors de l\'obtention de la localisation',
+        e,
+        stackTrace,
+      );
       _handleLocationError(context, 'Erreur de localisation: $e');
     }
   }
@@ -118,10 +126,7 @@ class AddBinController extends StateNotifier<AddBinState> {
 
     if (context != null && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text(message), backgroundColor: Colors.red),
       );
     }
   }
@@ -145,7 +150,8 @@ class AddBinController extends StateNotifier<AddBinState> {
       final docRef = FirebaseFirestore.instance.collection('waste_bins').doc();
       final wasteBin = WasteBin(
         id: docRef.id,
-        createdAt: DateTime.now(), location: const GeoPoint(3, 5),
+        createdAt: DateTime.now(),
+        location: const GeoPoint(3, 5),
       );
 
       await docRef.set(wasteBin.toFirestore());
@@ -177,6 +183,7 @@ class AddBinController extends StateNotifier<AddBinState> {
   }
 }
 
-final addBinControllerProvider = StateNotifierProvider<AddBinController, AddBinState>(
-  (ref) => AddBinController(),
-);
+final addBinControllerProvider =
+    StateNotifierProvider<AddBinController, AddBinState>(
+      (ref) => AddBinController(),
+    );

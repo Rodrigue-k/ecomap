@@ -29,7 +29,7 @@ class FirebaseService {
         'type': 'general',
         'status': 'available',
       });
-      
+
       // Mettre à jour les statistiques de l'utilisateur
       await onWasteBinAdded();
     } catch (e) {
@@ -38,7 +38,10 @@ class FirebaseService {
   }
 
   // Mettre à jour une poubelle
-  static Future<void> updateWasteBin(String id, Map<String, dynamic> updates) async {
+  static Future<void> updateWasteBin(
+    String id,
+    Map<String, dynamic> updates,
+  ) async {
     try {
       await _wasteBinsCollection.doc(id).update({
         ...updates,
@@ -69,15 +72,17 @@ class FirebaseService {
     try {
       final deviceId = await DeviceService.getDeviceId();
       if (deviceId == null) {
-        AppLogger.e('Impossible d\'incrémenter la statistique: ID d\'appareil non disponible');
+        AppLogger.e(
+          'Impossible d\'incrémenter la statistique: ID d\'appareil non disponible',
+        );
         return;
       }
-      
+
       final docRef = _userStatsCollection.doc(deviceId);
-      
+
       await _firestore.runTransaction((transaction) async {
         final doc = await transaction.get(docRef);
-        
+
         if (!doc.exists) {
           // Créer un nouveau document avec la statistique initialisée à 1
           transaction.set(docRef, {
@@ -95,7 +100,9 @@ class FirebaseService {
         }
       });
     } catch (e) {
-      AppLogger.e('Erreur lors de la mise à jour des statistiques utilisateur: $e');
+      AppLogger.e(
+        'Erreur lors de la mise à jour des statistiques utilisateur: $e',
+      );
     }
   }
 
@@ -111,7 +118,7 @@ class FirebaseService {
       yield {};
       return;
     }
-    
+
     yield* _userStatsCollection
         .doc(deviceId)
         .snapshots()

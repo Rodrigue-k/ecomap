@@ -3,11 +3,8 @@ import 'package:geolocator/geolocator.dart';
 
 class LocationStatusWidget extends StatefulWidget {
   final VoidCallback? onLocationUpdated;
-  
-  const LocationStatusWidget({
-    super.key,
-    this.onLocationUpdated,
-  });
+
+  const LocationStatusWidget({super.key, this.onLocationUpdated});
 
   @override
   State<LocationStatusWidget> createState() => _LocationStatusWidgetState();
@@ -51,8 +48,8 @@ class _LocationStatusWidgetState extends State<LocationStatusWidget> {
       setState(() {
         _permission = newPermission;
       });
-      
-      if (newPermission == LocationPermission.whileInUse || 
+
+      if (newPermission == LocationPermission.whileInUse ||
           newPermission == LocationPermission.always) {
         widget.onLocationUpdated?.call();
       }
@@ -219,7 +216,7 @@ class _LocationStatusWidgetState extends State<LocationStatusWidget> {
       );
     }
 
-    if (_permission == LocationPermission.whileInUse || 
+    if (_permission == LocationPermission.whileInUse ||
         _permission == LocationPermission.always) {
       return Card(
         color: Colors.green.shade50,

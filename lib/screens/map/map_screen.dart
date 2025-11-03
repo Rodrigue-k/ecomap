@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:latlong2/latlong.dart' as latlong;
-import 'package:geolocator/geolocator.dart' hide LocationServiceDisabledException, PermissionDeniedException;
+import 'package:geolocator/geolocator.dart'
+    hide LocationServiceDisabledException, PermissionDeniedException;
 
 import 'package:EcoMap/core/theme/app_theme.dart';
 import 'package:EcoMap/core/widgets/snack_bar_manager.dart';
@@ -24,40 +25,38 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   gmaps.GoogleMapController? _mapController;
   latlong.LatLng? _currentLocation;
   final Set<gmaps.Marker> _markers = {};
-  
+
   // Position par défaut (Lomé, Togo)
   static const _defaultLocation = latlong.LatLng(6.1333, 1.2167);
-  
+
   late final AppLifecycleListener _appLifecycleListener;
-  
+
   @override
   void initState() {
     super.initState();
-    
+
     // Configurer l'écouteur du cycle de vie de l'application
-    _appLifecycleListener = AppLifecycleListener(
-      onResume: _onAppResumed,
-    );
-    
+    _appLifecycleListener = AppLifecycleListener(onResume: _onAppResumed);
+
     // Charger les données après le premier rendu
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Charger les poubelles
       _loadWasteBins(showLoading: false);
-      
+
       // Initialiser la localisation
       _initializeLocation();
     });
   }
-  
+
   // Charge les poubelles indépendamment de la localisation
   Future<void> _loadWasteBins({bool showLoading = true}) async {
     if (!mounted) return;
-    
+
     if (showLoading) {
       // Afficher un indicateur de chargement si demandé
       _showInfoSnackBar('Mise à jour des poubelles en cours...');
     }
-    
+
     try {
       // Déclencher le chargement des poubelles via le Provider
       final result = ref.refresh(wasteBinsProvider.future);
@@ -69,16 +68,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       }
     }
   }
-  
+
   // Appelé quand l'application revient au premier plan
   Future<void> _onAppResumed() async {
-    debugPrint('Application revenue au premier plan, rafraîchissement des données...');
+    debugPrint(
+      'Application revenue au premier plan, rafraîchissement des données...',
+    );
     // Rafraîchir les données
     await _loadWasteBins(showLoading: true);
     // Vérifier et mettre à jour la localisation
     await _initializeLocation();
   }
-  
+
   @override
   void dispose() {
     _mapController?.dispose();
@@ -89,10 +90,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   // Initialise la localisation et gère l'affichage des notifications
   Future<void> _initializeLocation() async {
     if (!mounted) return;
-    
+
     try {
       // Vérifier si la localisation est activée
-      final isLocationEnabled = await _locationService.isLocationServiceEnabled();
+      final isLocationEnabled = await _locationService
+          .isLocationServiceEnabled();
       if (!isLocationEnabled) {
         _showPermanentSnackBar(
           'La localisation est désactivée. Activez-la pour voir votre position.',
@@ -100,13 +102,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         );
         return;
       }
-      
+
       // Vérifier les permissions
       var permission = await _locationService.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await _locationService.requestPermission();
       }
-      
+
       if (permission == LocationPermission.deniedForever) {
         _showPermanentSnackBar(
           'Les permissions de localisation sont nécessaires pour afficher votre position.',
@@ -114,45 +116,47 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         );
         return;
       }
-      
-      if (permission == LocationPermission.whileInUse || 
+
+      if (permission == LocationPermission.whileInUse ||
           permission == LocationPermission.always) {
         // Si la permission est accordée, masquer la SnackBar et obtenir la position
         SnackBarManager.hideCurrentSnackBar();
         await _tryGetCurrentLocation();
       }
-      
     } catch (e) {
       debugPrint('Erreur dans _initializeLocation: $e');
       _showError('Erreur', 'Impossible d\'accéder à la localisation');
     }
   }
-  
+
   // Essaie d'obtenir la position actuelle
   Future<void> _tryGetCurrentLocation() async {
     if (!mounted) return;
-    
+
     try {
       final position = await _locationService.getCurrentPosition();
       if (!mounted) return;
-      
+
       setState(() {
         _currentLocation = position;
         _updateCurrentLocationMarker();
         _centerMap();
       });
-      
+
       // Cacher toute notification de localisation en cas de succès
       SnackBarManager.hideCurrentSnackBar();
-      
     } catch (e) {
       debugPrint('Erreur lors de la récupération de la position: $e');
       if (e is LocationServiceDisabledException) {
-        _showPermanentSnackBar('La localisation est désactivée. Activez-la pour voir votre position.');
+        _showPermanentSnackBar(
+          'La localisation est désactivée. Activez-la pour voir votre position.',
+        );
       } else if (e is PermissionDeniedException) {
         _showPermanentSnackBar('L\'accès à la localisation a été refusé.');
       } else {
-        _showPermanentSnackBar('Impossible d\'obtenir votre position. Vérifiez votre connexion et les paramètres de localisation.');
+        _showPermanentSnackBar(
+          'Impossible d\'obtenir votre position. Vérifiez votre connexion et les paramètres de localisation.',
+        );
       }
     }
   }
@@ -163,7 +167,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     _mapController?.animateCamera(
       gmaps.CameraUpdate.newLatLngZoom(
         MarkerService.toGoogleMapsLatLng(position),
-        _currentLocation != null ? 15 : 12, // Zoom plus large si pas de localisation
+        _currentLocation != null
+            ? 15
+            : 12, // Zoom plus large si pas de localisation
       ),
     );
   }
@@ -179,11 +185,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     if (!mounted) return;
     SnackBarManager.showErrorSnackBar('$title: $message');
   }
-  
+
   // Affiche un message d'information persistant avec une action appropriée
-  void _showPermanentSnackBar(String message, {bool isLocationDisabled = true}) {
+  void _showPermanentSnackBar(
+    String message, {
+    bool isLocationDisabled = true,
+  }) {
     if (!mounted) return;
-    
+
     SnackBarManager.showPermanentSnackBar(
       message,
       action: SnackBarAction(
@@ -197,7 +206,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             // Ouvrir les paramètres de l'application pour les permissions
             await _locationService.openAppSettings();
           }
-          
+
           // Vérifier à nouveau l'état après le retour des paramètres
           if (mounted) {
             await _initializeLocation();
@@ -247,7 +256,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               title: const Text('Annuler'),
               onTap: () => Navigator.pop(context),
             ),
-            const SizedBox(height: 8), // Ajoute un espace en bas pour les appareils avec notch
+            const SizedBox(
+              height: 8,
+            ), // Ajoute un espace en bas pour les appareils avec notch
           ],
         ),
       ),
@@ -280,12 +291,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   // Met à jour les marqueurs des poubelles
   Future<void> _updateWasteBinMarkers(List<WasteBin> bins) async {
     if (!mounted) return;
-    
+
     debugPrint('Mise à jour de ${bins.length} marqueurs de poubelles');
-    
+
     try {
       final markers = <gmaps.Marker>[];
-      
+
       // Créer les marqueurs de manière séquentielle pour éviter les problèmes de concurrence
       for (final bin in bins) {
         try {
@@ -298,31 +309,31 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           debugPrint('Erreur création marqueur poubelle ${bin.id}: $e');
         }
       }
-      
+
       if (!mounted) return;
-      
+
       setState(() {
         // Supprimer uniquement les marqueurs de poubelles
         _markers.removeWhere((m) => m.markerId.value != 'current_location');
         _markers.addAll(markers);
         debugPrint('${_markers.length} marqueurs affichés sur la carte');
       });
-      
     } catch (e) {
       debugPrint('Erreur lors de la mise à jour des marqueurs: $e');
-    } 
+    }
   }
 
   // Met à jour le marqueur de position actuelle
   Future<void> _updateCurrentLocationMarker() async {
     if (!mounted || _currentLocation == null) return;
-    
+
     try {
-      final currentLocationMarker = await MarkerService.createCurrentLocationMarker(
-        _currentLocation!,
-        _showAddBinDialog,
-      );
-      
+      final currentLocationMarker =
+          await MarkerService.createCurrentLocationMarker(
+            _currentLocation!,
+            _showAddBinDialog,
+          );
+
       if (mounted) {
         setState(() {
           // Supprimer l'ancien marqueur de position
@@ -345,7 +356,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final confirmed = await CustomDialogs.showConfirmationDialog(
       context: context,
       title: 'Ajouter une poubelle',
-      content: 'Ajouter une poubelle à votre position actuelle ?\n'
+      content:
+          'Ajouter une poubelle à votre position actuelle ?\n'
           'Lat: ${_currentLocation!.latitude.toStringAsFixed(6)}\n'
           'Lon: ${_currentLocation!.longitude.toStringAsFixed(6)}',
       confirmText: 'Ajouter',
@@ -353,7 +365,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
     if (confirmed && mounted) {
       try {
-        await ref.read(wasteBinsProvider.notifier).addWasteBin(_currentLocation!);
+        await ref
+            .read(wasteBinsProvider.notifier)
+            .addWasteBin(_currentLocation!);
         if (mounted) {
           _showSuccess('Poubelle ajoutée avec succès');
         }
@@ -365,28 +379,28 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     }
   }
 
-
   // Construit la carte Google Maps
   Widget _buildMap() {
-    
     final initialPosition = _currentLocation ?? _defaultLocation;
-    
+
     // Créer la position initiale de la caméra
     final cameraPosition = gmaps.CameraPosition(
       target: MarkerService.toGoogleMapsLatLng(initialPosition),
-      zoom: _currentLocation != null ? 15 : 12, // Zoom plus large si pas de localisation
+      zoom: _currentLocation != null
+          ? 15
+          : 12, // Zoom plus large si pas de localisation
     );
-    
+
     return Stack(
       children: [
         gmaps.GoogleMap(
           onMapCreated: (controller) {
             _mapController = controller;
             debugPrint('Carte créée avec succès');
-            
+
             // Centrer la carte sur la position initiale
             _centerMap();
-            
+
             // Vérifier la région visible après un court délai
             Future.delayed(const Duration(milliseconds: 500), () {
               if (mounted && _mapController != null) {
@@ -412,7 +426,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             }
           },
         ),
-    
       ],
     );
   }
@@ -440,37 +453,39 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               builder: (context, ref, child) {
                 // Observer les changements de la liste des poubelles
                 final wasteBinsAsync = ref.watch(wasteBinsProvider);
-              
-              // Mettre à jour les marqueurs quand les données changent
-              return wasteBinsAsync.when(
-                data: (bins) {
-                  if (mounted) {
-                    // Utiliser un délai pour éviter les mises à jour pendant le build
-                    Future.microtask(() => _updateWasteBinMarkers(bins));
-                  }
-                  return _buildMap();
-                },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, stack) {
-                  debugPrint('Erreur lors du chargement des poubelles: $error');
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text('Erreur lors du chargement des poubelles'),
-                        TextButton(
-                          onPressed: _loadWasteBins,
-                          child: const Text('Réessayer'),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              );
-            },
-            )
+
+                // Mettre à jour les marqueurs quand les données changent
+                return wasteBinsAsync.when(
+                  data: (bins) {
+                    if (mounted) {
+                      // Utiliser un délai pour éviter les mises à jour pendant le build
+                      Future.microtask(() => _updateWasteBinMarkers(bins));
+                    }
+                    return _buildMap();
+                  },
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (error, stack) {
+                    debugPrint(
+                      'Erreur lors du chargement des poubelles: $error',
+                    );
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text('Erreur lors du chargement des poubelles'),
+                          TextButton(
+                            onPressed: _loadWasteBins,
+                            child: const Text('Réessayer'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           ],
-      
         ),
         floatingActionButton: Padding(
           padding: const EdgeInsets.only(bottom: 100.0, right: 0.0),

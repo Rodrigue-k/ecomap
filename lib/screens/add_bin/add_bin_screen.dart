@@ -15,7 +15,8 @@ class AddBinScreen extends ConsumerWidget {
 
     // Création de fonctions wrapper sans paramètre
     Future<void> handleGetLocation() => controller.getCurrentLocation(context);
-    Future<void> handleCheckPermission() => controller.checkLocationPermission(context);
+    Future<void> handleCheckPermission() =>
+        controller.checkLocationPermission(context);
     Future<void> handleAddBin() => controller.addWasteBin(context);
 
     return Scaffold(
@@ -41,8 +42,8 @@ class AddBinScreen extends ConsumerWidget {
 
             // Bouton de localisation actuelle
             ElevatedButton.icon(
-              onPressed: state.hasLocationPermission 
-                  ? handleGetLocation 
+              onPressed: state.hasLocationPermission
+                  ? handleGetLocation
                   : handleCheckPermission,
               icon: Icon(
                 state.hasLocationPermission
