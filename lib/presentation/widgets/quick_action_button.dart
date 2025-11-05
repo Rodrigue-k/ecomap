@@ -22,9 +22,9 @@ class QuickActionButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withAlpha((255 * 0.1).round()),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withAlpha((255 * 0.3).round())),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

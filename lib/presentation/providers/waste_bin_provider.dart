@@ -1,50 +1,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:latlong2/latlong.dart' as latlong;
-import '../models/waste_bin.dart';
-import '../services/firebase_service.dart';
-import '../services/location_service.dart';
+import '../../domain/entities/waste_bin.dart';
+import '../../data/repositories/waste_bin_repository_impl.dart';
+import '../../core/services/location_service.dart';
 
-// Provider pour la position actuelle de l'utilisateur
+// Provider for the current user location
 final currentLocationProvider = FutureProvider<LatLng?>((ref) async {
-  return await LocationService.getCurrentLocation();
+  return await LocationService().getCurrentPosition();
 });
 
-// Provider principal pour les poubelles
-final wasteBinsProvider =
-    StreamNotifierProvider<WasteBinsNotifier, List<WasteBin>>(
-      WasteBinsNotifier.new,
-    );
+// Main provider for waste bins
+final wasteBinsProvider = StreamProvider<List<WasteBin>>((ref) {
+  final repository = ref.watch(wasteBinRepositoryProvider);
+  return repository.getWasteBins();
+});
 
-class WasteBinsNotifier extends StreamNotifier<List<WasteBin>> {
-  @override
-  Stream<List<WasteBin>> build() {
-    return FirebaseService.getWasteBins();
-  }
-
-  Future<void> addWasteBin(latlong.LatLng location) async {
-    state = const AsyncValue.loading();
-    try {
-      await FirebaseService.addWasteBin(location);
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
-      rethrow;
-    }
-  }
-
-  Future<void> deleteWasteBin(String id) async {
-    state = const AsyncValue.loading();
-    try {
-      await FirebaseService.deleteWasteBin(id);
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
-      rethrow;
-    }
-  }
-}
-
-// Provider pour la poubelle sélectionnée
+// Provider for the selected waste bin
 final selectedWasteBinProvider = StateProvider<WasteBin?>((ref) => null);
 
-// Provider pour le mode d'ajout
+// Provider for the adding mode
 final isAddingBinProvider = StateProvider<bool>((ref) => false);

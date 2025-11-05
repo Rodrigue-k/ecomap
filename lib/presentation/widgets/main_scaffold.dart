@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../core/router/app_router.dart';
-import '../core/theme/app_theme.dart';
+import '../../core/router/app_router.dart';
 
 class MainScaffold extends StatefulWidget {
   final Widget child;
@@ -73,9 +72,9 @@ class _MainScaffoldState extends State<MainScaffold> {
         currentIndex: _currentIndex,
         onTap: _onItemTapped,
         type: BottomNavigationBarType.fixed,
-        backgroundColor: AppTheme.surfaceColor,
-        selectedItemColor: AppTheme.primaryColor,
-        unselectedItemColor: AppTheme.textSecondary,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        selectedItemColor: Theme.of(context).colorScheme.primary,
+        unselectedItemColor: Theme.of(context).colorScheme.onSurfaceVariant,
         elevation: 8,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Carte'),

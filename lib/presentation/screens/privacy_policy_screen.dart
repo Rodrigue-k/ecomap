@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../core/theme/app_theme.dart';
+
 
 class PrivacyPolicyScreen extends StatelessWidget {
   const PrivacyPolicyScreen({super.key});
@@ -17,7 +17,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
               'Politique de confidentialité d\'EcoMap',
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: AppTheme.textPrimary,
+                color: Theme.of(context).textTheme.headlineMedium?.color,
               ),
             ),
             const SizedBox(height: 20),
@@ -45,7 +45,7 @@ Vos données ne sont pas vendues ni partagées avec des tiers, sauf :
 - Pour se conformer aux obligations légales.
 
 ### 4. Sécurité
-Nous utilisons Firebase pour stocker les données de manière sécurisée avec des mesures comme le chiffrement.
+Nous utilisons des services tiers pour stocker les données de manière sécurisée avec des mesures comme le chiffrement.
 
 ### 5. Vos droits
 Vous pouvez demander l'accès, la correction ou la suppression de vos données en nous contactant à contact@ecomap.tg.
@@ -59,7 +59,7 @@ EcoMap est une initiative pour un environnement plus propre. Merci de votre conf
               ''',
               style: Theme.of(
                 context,
-              ).textTheme.bodyLarge?.copyWith(color: AppTheme.textSecondary),
+              ).textTheme.bodyLarge?.copyWith(color: Theme.of(context).textTheme.bodyLarge?.color),
             ),
           ],
         ),

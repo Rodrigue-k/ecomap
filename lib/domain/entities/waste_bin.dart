@@ -1,42 +1,37 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:latlong2/latlong.dart' as latlong;
 
-class WasteBin {
+import 'package:equatable/equatable.dart';
+
+class WasteBin extends Equatable {
   final String id;
-  final GeoPoint location; // Utiliser GeoPoint pour Firestore
-  final DateTime createdAt;
-  final String type;
-  final String status;
+  final double latitude;
+  final double longitude;
+  final String imageUrl;
+  final String deviceId;
 
   const WasteBin({
     required this.id,
-    required this.location,
-    required this.createdAt,
-    this.type = 'general',
-    this.status = 'available',
+    required this.latitude,
+    required this.longitude,
+    required this.imageUrl,
+    required this.deviceId,
   });
 
-  // Conversion vers latlong.LatLng
-  latlong.LatLng get latLng =>
-      latlong.LatLng(location.latitude, location.longitude);
+  factory WasteBin.fromJson(Map<String, dynamic> json) => WasteBin(
+    id: json['id'] as String,
+    latitude: json['lat'] as double,
+    longitude: json['lng'] as double,
+    imageUrl: json['photo_url'] as String,
+    deviceId: json['device_id'] as String,
+  );
 
-  factory WasteBin.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return WasteBin(
-      id: doc.id,
-      location: data['location'] as GeoPoint,
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
-      type: data['type'] ?? 'general',
-      status: data['status'] ?? 'available',
-    );
-  }
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'lat': latitude,
+    'lng': longitude,
+    'photo_url': imageUrl,
+    'device_id': deviceId,
+  };
 
-  Map<String, dynamic> toFirestore() {
-    return {
-      'location': location,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'type': type,
-      'status': status,
-    };
-  }
+  @override
+  List<Object?> get props => [id, latitude, longitude, imageUrl, deviceId];
 }

@@ -41,7 +41,7 @@ class LocationObtainedWidget extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             decoration: BoxDecoration(
-              color: accuracyColor.withOpacity(0.2),
+              color: accuracyColor.withAlpha((255 * 0.2).round()),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(

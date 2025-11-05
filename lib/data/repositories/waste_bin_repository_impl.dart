@@ -1,24 +1,58 @@
-// import '../models/waste_bin.dart';
-import '../services/supabase_client.dart';
+import 'package:uuid/uuid.dart';
+import '../../domain/entities/waste_bin.dart';
+import '../../domain/repositories/waste_bin_repository.dart';
+import '../../core/services/device_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
 
-class WasteBinRepository {
-  final SupabaseClient _client = SupabaseClientService.instance.client;
+class WasteBinRepositoryImpl implements WasteBinRepository {
+  final _client = Supabase.instance.client;
 
-  Future<List<dynamic>> getWasteBins() async {
-    final data = await _client.from('waste_bins').select();
-    return data;
+  @override
+  Stream<List<WasteBin>> getWasteBins() {
+    return _client
+        .from('waste_bins')
+        .stream(primaryKey: ['id'])
+        .map((maps) => maps.map(WasteBin.fromJson).toList());
   }
 
-  // Future<void> addWasteBin(WasteBin wasteBin) async {
-  //   await _client.from('waste_bins').insert(wasteBin.toJson());
-  // }
+  @override
+  Future<void> addWasteBin({
+    required double latitude,
+    required double longitude,
+    required String imageUrl,
+  }) async {
+    final deviceId = await DeviceService.instance.getDeviceId();
+    if (deviceId == null) {
+      throw Exception('Device ID not found');
+    }
 
-  // Future<void> updateWasteBin(WasteBin wasteBin) async {
-  //   await _client.from('waste_bins').update(wasteBin.toJson()).eq('id', wasteBin.id);
-  // }
+    final wasteBin = WasteBin(
+      id: const Uuid().v4(),
+      latitude: latitude,
+      longitude: longitude,
+      imageUrl: imageUrl,
+      deviceId: deviceId,
+    );
 
-  // Future<void> deleteWasteBin(String id) async {
-  //   await _client.from('waste_bins').delete().eq('id', id);
-  // }
+    await _client.from('waste_bins').insert(wasteBin.toJson());
+  }
+
+  @override
+  Future<void> deleteWasteBin(String id) async {
+    try {
+      await _client
+          .from('waste_bins')
+          .delete()
+          .eq('id', id);
+    } catch (e) {
+      debugPrint('Error deleting waste bin: $e');
+      rethrow;
+    }
+  }
 }
+
+final wasteBinRepositoryProvider = Provider<WasteBinRepository>(
+  (ref) => WasteBinRepositoryImpl(),
+);

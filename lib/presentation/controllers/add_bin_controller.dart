@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:cloud_firestore/cloud_firestore.dart'; // No longer used
 
-import '../../models/waste_bin.dart';
-import '../../services/location_permission_service.dart';
+import '../../core/services/location_permission_service.dart';
 import '../../core/app_logger.dart';
+import '../../data/repositories/waste_bin_repository_impl.dart'; // Import repository
 
 class AddBinState {
   final LatLng? selectedLocation;
@@ -47,23 +47,27 @@ class AddBinState {
 }
 
 class AddBinController extends StateNotifier<AddBinState> {
-  AddBinController() : super(const AddBinState());
+  AddBinController(this.ref) : super(const AddBinState());
 
-  Future<void> checkLocationPermission(BuildContext? context) async {
+  final Ref ref;
+
+  Future<void> checkLocationPermission(BuildContext context) async {
     AppLogger.i('Vérification des permissions de localisation');
     final hasPermission =
         await LocationPermissionService.requestLocationPermissionForAddingBin(
-          context!,
+          context,
         );
 
     state = state.copyWith(hasLocationPermission: hasPermission);
 
     if (hasPermission) {
-      await getCurrentLocation(context);
+      if (context.mounted) {
+        await getCurrentLocation(context);
+      }
     }
   }
 
-  Future<void> getCurrentLocation([BuildContext? context]) async {
+  Future<void> getCurrentLocation(BuildContext context) async {
     if (!state.hasLocationPermission) {
       AppLogger.w('Pas de permission de localisation');
       return;
@@ -78,7 +82,7 @@ class AddBinController extends StateNotifier<AddBinState> {
       AppLogger.i('Début de l\'obtention de la localisation');
 
       final position = await LocationPermissionService.getLocationWithProgress(
-        context!,
+        context,
         (String progressMessage) {
           state = state.copyWith(locationProgressMessage: progressMessage);
         },
@@ -106,7 +110,9 @@ class AddBinController extends StateNotifier<AddBinState> {
           );
         }
       } else {
-        _handleLocationError(context, 'Échec de la localisation');
+        if (context.mounted) {
+          _handleLocationError(context, 'Échec de la localisation');
+        }
       }
     } catch (e, stackTrace) {
       AppLogger.e(
@@ -114,17 +120,19 @@ class AddBinController extends StateNotifier<AddBinState> {
         e,
         stackTrace,
       );
-      _handleLocationError(context, 'Erreur de localisation: $e');
+      if (context.mounted) {
+        _handleLocationError(context, 'Erreur de localisation: $e');
+      }
     }
   }
 
-  void _handleLocationError(BuildContext? context, String message) {
+  void _handleLocationError(BuildContext context, String message) {
     state = state.copyWith(
       isLocationLoading: false,
       locationProgressMessage: message,
     );
 
-    if (context != null && context.mounted) {
+    if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message), backgroundColor: Colors.red),
       );
@@ -133,12 +141,14 @@ class AddBinController extends StateNotifier<AddBinState> {
 
   Future<void> addWasteBin(BuildContext context) async {
     if (state.selectedLocation == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Veuillez d\'abord obtenir votre position actuelle.'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Veuillez d\'abord obtenir votre position actuelle.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
       return;
     }
 
@@ -147,14 +157,12 @@ class AddBinController extends StateNotifier<AddBinState> {
     try {
       AppLogger.i('Ajout de la poubelle');
 
-      final docRef = FirebaseFirestore.instance.collection('waste_bins').doc();
-      final wasteBin = WasteBin(
-        id: docRef.id,
-        createdAt: DateTime.now(),
-        location: const GeoPoint(3, 5),
+      final repository = ref.read(wasteBinRepositoryProvider);
+      await repository.addWasteBin(
+        latitude: state.selectedLocation!.latitude,
+        longitude: state.selectedLocation!.longitude,
+        imageUrl: 'https://placehold.co/600x400.png', // Placeholder
       );
-
-      await docRef.set(wasteBin.toFirestore());
 
       AppLogger.i('Poubelle ajoutée avec succès');
 
@@ -185,5 +193,5 @@ class AddBinController extends StateNotifier<AddBinState> {
 
 final addBinControllerProvider =
     StateNotifierProvider<AddBinController, AddBinState>(
-      (ref) => AddBinController(),
+      (ref) => AddBinController(ref),
     );

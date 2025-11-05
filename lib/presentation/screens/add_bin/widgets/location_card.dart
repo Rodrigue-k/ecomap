@@ -1,4 +1,4 @@
-import '../add_bin_controller.dart';
+import '../../../controllers/add_bin_controller.dart';
 import 'location_loading.dart';
 import 'location_not_obtained.dart';
 import 'location_obtained.dart';

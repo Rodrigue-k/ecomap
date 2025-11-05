@@ -1,7 +1,7 @@
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
-import '../core/app_logger.dart';
+import '../app_logger.dart';
 
 class LocationPermissionService {
   /// Vérifie et demande les permissions de localisation nécessaires
@@ -22,7 +22,9 @@ class LocationPermissionService {
       AppLogger.w(
         'LocationPermissionService: Services de localisation désactivés',
       );
-      await _showLocationServiceDialog(context);
+      if (context.mounted) {
+        await _showLocationServiceDialog(context);
+      }
       return false;
     }
 
@@ -40,7 +42,9 @@ class LocationPermissionService {
 
       if (permission == LocationPermission.denied) {
         AppLogger.w('LocationPermissionService: Permission refusée');
-        await _showPermissionDeniedDialog(context);
+        if (context.mounted) {
+          await _showPermissionDeniedDialog(context);
+        }
         return false;
       }
     }
@@ -49,7 +53,9 @@ class LocationPermissionService {
       AppLogger.w(
         'LocationPermissionService: Permission refusée définitivement',
       );
-      await _showPermissionPermanentlyDeniedDialog(context);
+      if (context.mounted) {
+        await _showPermissionPermanentlyDeniedDialog(context);
+      }
       return false;
     }
 
@@ -70,7 +76,9 @@ class LocationPermissionService {
         AppLogger.w(
           'LocationPermissionService: Permission refusée via permission_handler',
         );
-        await _showPermissionDeniedDialog(context);
+        if (context.mounted) {
+          await _showPermissionDeniedDialog(context);
+        }
         return false;
       }
     }
@@ -79,7 +87,9 @@ class LocationPermissionService {
       AppLogger.w(
         'LocationPermissionService: Permission refusée définitivement via permission_handler',
       );
-      await _showPermissionPermanentlyDeniedDialog(context);
+      if (context.mounted) {
+        await _showPermissionPermanentlyDeniedDialog(context);
+      }
       return false;
     }
 
@@ -95,9 +105,12 @@ class LocationPermissionService {
 
     try {
       // Obtenir la position avec une précision élevée
+      const LocationSettings locationSettings = LocationSettings(
+        accuracy: LocationAccuracy.best,
+        timeLimit: Duration(seconds: 30),
+      );
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.best,
-        timeLimit: const Duration(seconds: 30),
+        locationSettings: locationSettings,
       );
 
       AppLogger.d(
@@ -110,7 +123,9 @@ class LocationPermissionService {
         AppLogger.w(
           'LocationPermissionService: Précision insuffisante: ${position.accuracy}m',
         );
-        await _showLowAccuracyDialog(context, position.accuracy);
+        if (context.mounted) {
+          await _showLowAccuracyDialog(context, position.accuracy);
+        }
         return false;
       }
 
@@ -124,7 +139,9 @@ class LocationPermissionService {
         e,
         stackTrace,
       );
-      await _showLocationErrorDialog(context, e.toString());
+      if (context.mounted) {
+        await _showLocationErrorDialog(context, e.toString());
+      }
       return false;
     }
   }
@@ -138,9 +155,12 @@ class LocationPermissionService {
       AppLogger.d(
         'LocationPermissionService: Première tentative avec LocationAccuracy.best',
       );
+      LocationSettings locationSettings = const LocationSettings(
+        accuracy: LocationAccuracy.best,
+        timeLimit: Duration(seconds: 30),
+      );
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.best,
-        timeLimit: const Duration(seconds: 30),
+        locationSettings: locationSettings,
       );
 
       AppLogger.d(
@@ -159,9 +179,12 @@ class LocationPermissionService {
         AppLogger.d(
           'LocationPermissionService: Deuxième tentative avec LocationAccuracy.high',
         );
+        locationSettings = const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 20),
+        );
         position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-          timeLimit: const Duration(seconds: 20),
+          locationSettings: locationSettings,
         );
 
         AppLogger.d(
@@ -175,9 +198,12 @@ class LocationPermissionService {
           );
           await Future.delayed(const Duration(seconds: 2));
 
+          locationSettings = const LocationSettings(
+            accuracy: LocationAccuracy.medium,
+            timeLimit: Duration(seconds: 15),
+          );
           position = await Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy.medium,
-            timeLimit: const Duration(seconds: 15),
+            locationSettings: locationSettings,
           );
 
           AppLogger.d(
@@ -197,7 +223,9 @@ class LocationPermissionService {
         AppLogger.w(
           'LocationPermissionService: Précision finale insuffisante: ${position.accuracy}m',
         );
-        await _showLowAccuracyDialog(context, position.accuracy);
+        if (context.mounted) {
+          await _showLowAccuracyDialog(context, position.accuracy);
+        }
         return null;
       }
     } catch (e, stackTrace) {
@@ -206,7 +234,9 @@ class LocationPermissionService {
         e,
         stackTrace,
       );
-      await _showLocationErrorDialog(context, e.toString());
+      if (context.mounted) {
+        await _showLocationErrorDialog(context, e.toString());
+      }
       return null;
     }
   }
@@ -263,11 +293,12 @@ class LocationPermissionService {
     AppLogger.i(
       'LocationPermissionService: Ouverture des paramètres de l\'application',
     );
-    await openAppSettings();
+    await Geolocator.openAppSettings();
   }
 
   // Dialogues d'information
   static Future<void> _showLocationServiceDialog(BuildContext context) async {
+    if (!context.mounted) return;
     return showDialog(
       context: context,
       barrierDismissible: false,
@@ -297,6 +328,7 @@ class LocationPermissionService {
   }
 
   static Future<void> _showPermissionDeniedDialog(BuildContext context) async {
+    if (!context.mounted) return;
     return showDialog(
       context: context,
       barrierDismissible: false,
@@ -341,6 +373,7 @@ class LocationPermissionService {
   static Future<void> _showPermissionPermanentlyDeniedDialog(
     BuildContext context,
   ) async {
+    if (!context.mounted) return;
     return showDialog(
       context: context,
       barrierDismissible: false,
@@ -375,6 +408,7 @@ class LocationPermissionService {
     BuildContext context,
     double accuracy,
   ) async {
+    if (!context.mounted) return;
     return showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -407,6 +441,7 @@ class LocationPermissionService {
     BuildContext context,
     String error,
   ) async {
+    if (!context.mounted) return;
     return showDialog(
       context: context,
       builder: (BuildContext context) {

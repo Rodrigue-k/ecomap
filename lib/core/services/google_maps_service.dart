@@ -46,7 +46,7 @@ class GoogleMapsService {
       circleId: const CircleId('radius'),
       center: center,
       radius: radiusKm * 1000,
-      fillColor: Colors.blue.withOpacity(0.2),
+      fillColor: Colors.blue.withAlpha((255 * 0.2).round()),
       strokeColor: Colors.blue,
       strokeWidth: 2,
     );

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart' as latlong;
 
-import '../../../core/theme/app_theme.dart';
-
 class DialogManager {
   static Future<bool> showCustomDialog({
     required BuildContext context,
@@ -14,13 +12,13 @@ class DialogManager {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.surfaceColor,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         elevation: 8,
         title: Text(
           title,
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            color: AppTheme.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -28,7 +26,7 @@ class DialogManager {
           content,
           style: Theme.of(
             context,
-          ).textTheme.bodyLarge?.copyWith(color: AppTheme.textSecondary),
+          ).textTheme.bodyLarge?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
         actions: actions.map((action) {
           if (action is TextButton) {
@@ -36,7 +34,7 @@ class DialogManager {
               style: TextButton.styleFrom(
                 foregroundColor:
                     action.style?.foregroundColor?.resolve({}) ??
-                    AppTheme.primaryColor,
+                    Theme.of(context).colorScheme.primary,
                 textStyle: Theme.of(context).textTheme.bodyLarge,
               ),
               onPressed: action.onPressed,
@@ -63,9 +61,9 @@ class DialogManager {
         ),
         TextButton(
           onPressed: () => Navigator.pop(context, true),
-          child: const Text(
+          child: Text(
             'Supprimer',
-            style: TextStyle(color: AppTheme.errorColor),
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
         ),
       ],

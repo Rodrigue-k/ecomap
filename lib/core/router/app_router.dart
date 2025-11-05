@@ -1,8 +1,6 @@
 import 'package:go_router/go_router.dart';
-import '../../screens/map/map_screen.dart';
-import '../../screens/privacy_policy_screen.dart';
-import '../../screens/profile_screen.dart';
-import '../../widgets/main_scaffold.dart';
+import '../../presentation/screens/map_screen.dart';
+import '../../presentation/widgets/main_scaffold.dart';
 
 class AppRouter {
   static const String map = '/';
@@ -21,14 +19,14 @@ class AppRouter {
             path: addBin,
             builder: (context, state) => const AddBinScreen(),
           ),*/
-          GoRoute(
+          /*GoRoute(
             path: profile,
             builder: (context, state) => const ProfileScreen(),
-          ),
-          GoRoute(
+          ),*/
+          /*GoRoute(
             path: privacyPolicy,
             builder: (context, state) => const PrivacyPolicyScreen(),
-          ),
+          ),*/
         ],
       ),
     ],

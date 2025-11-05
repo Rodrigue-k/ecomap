@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/theme/app_theme.dart';
-import 'add_bin_controller.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../controllers/add_bin_controller.dart';
 import 'widgets/location_card.dart';
 
 class AddBinScreen extends ConsumerWidget {
