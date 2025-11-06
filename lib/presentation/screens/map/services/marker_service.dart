@@ -1,4 +1,4 @@
-import 'package:ecomap/core/services/google_maps_service.dart';
+import '../../../../data/data_sources/google_maps_service.dart';
 import 'package:ecomap/domain/entities/waste_bin.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
@@ -14,7 +14,7 @@ class MarkerService {
     VoidCallback onTap,
   ) async {
     final icon = await GoogleMapsService.getTrashBinIcon();
-    
+
     return gmaps.Marker(
       markerId: gmaps.MarkerId('bin_${bin.id}'),
       position: gmaps.LatLng(bin.latitude, bin.longitude),
@@ -32,14 +32,14 @@ class MarkerService {
     VoidCallback onTap,
   ) async {
     final icon = await GoogleMapsService.getCurrentLocationIcon();
-    
+
     return gmaps.Marker(
       markerId: const gmaps.MarkerId('current_location'),
       position: gmaps.LatLng(position.latitude, position.longitude),
       icon: icon,
       onTap: onTap,
       anchor: const Offset(0.5, 0.5),
-      zIndex: 1000,
+      zIndexInt: 1000,
     );
   }
 }

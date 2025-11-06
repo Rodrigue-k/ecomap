@@ -1,3 +1,6 @@
+class ServerException implements Exception {}
+
+class CacheException implements Exception {}
 
 class LocationServiceDisabledException implements Exception {
   final String message;

@@ -1,7 +1,7 @@
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
-import '../app_logger.dart';
+import '../../core/utils/app_logger.dart';
 
 class LocationPermissionService {
   /// Vérifie et demande les permissions de localisation nécessaires
@@ -345,29 +345,30 @@ class LocationPermissionService {
               child: const Text('Annuler'),
             ),
             ElevatedButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                LocationPermission permission =
-                    await Geolocator.requestPermission();
-                if (permission == LocationPermission.denied) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Permission refusée. Impossible d\'ajouter une poubelle.',
-                        ),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                }
-              },
+              onPressed: () => _handlePermissionRequest(context),
               child: const Text('Autoriser'),
             ),
           ],
         );
       },
     );
+  }
+
+  static Future<void> _handlePermissionRequest(BuildContext context) async {
+    if (!context.mounted) return;
+    Navigator.of(context).pop();
+    LocationPermission permission = await Geolocator.requestPermission();
+    if (permission == LocationPermission.denied) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Permission refusée. Impossible d\'ajouter une poubelle.',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   static Future<void> _showPermissionPermanentlyDeniedDialog(

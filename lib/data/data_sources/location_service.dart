@@ -1,7 +1,8 @@
 import 'package:flutter/foundation.dart';
-import 'package:geolocator/geolocator.dart' hide LocationServiceDisabledException, PermissionDeniedException;
+import 'package:geolocator/geolocator.dart'
+    hide LocationServiceDisabledException, PermissionDeniedException;
 import 'package:latlong2/latlong.dart' as latlong;
-import '../errors/exceptions.dart';
+import '../../core/errors/exceptions.dart';
 
 class LocationService {
   // Vérifie si le service de localisation est activé
@@ -46,7 +47,9 @@ class LocationService {
 
     try {
       final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
       return latlong.LatLng(position.latitude, position.longitude);
     } on Exception catch (e) {

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-
 class PrivacyPolicyScreen extends StatelessWidget {
   const PrivacyPolicyScreen({super.key});
 
@@ -57,9 +56,9 @@ Pour toute question, contactez-nous à :
 
 EcoMap est une initiative pour un environnement plus propre. Merci de votre confiance !
               ''',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyLarge?.copyWith(color: Theme.of(context).textTheme.bodyLarge?.color),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Theme.of(context).textTheme.bodyLarge?.color,
+              ),
             ),
           ],
         ),

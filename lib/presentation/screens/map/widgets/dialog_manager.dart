@@ -24,9 +24,9 @@ class DialogManager {
         ),
         content: Text(
           content,
-          style: Theme.of(
-            context,
-          ).textTheme.bodyLarge?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
         actions: actions.map((action) {
           if (action is TextButton) {

@@ -7,6 +7,6 @@ abstract class WasteBinRepository {
     required double longitude,
     required String imageUrl,
   });
-  
+
   Future<void> deleteWasteBin(String id);
 }

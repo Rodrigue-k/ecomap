@@ -45,5 +45,23 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	
+	<!-- Permissions pour la caméra et la galerie -->
+	<key>NSCameraUsageDescription</key>
+	<string>Nous avons besoin d'accéder à votre caméra pour prendre des photos des dépotoirs</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Nous avons besoin d'accéder à votre galerie pour sélectionner des photos des dépotoirs</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Nécessaire si vous souhaitez enregistrer des vidéos</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Nécessaire pour enregistrer des images dans la galerie</string>
+	
+	<!-- Configuration de la localisation -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Nous avons besoin de votre position pour localiser les dépotoirs sur la carte</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Nous avons besoin de votre position pour vous montrer les dépotoirs à proximité</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Nous avons besoin de votre position pour vous montrer les dépotoirs à proximité</string>
 </dict>
 </plist>

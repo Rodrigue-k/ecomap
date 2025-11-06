@@ -1,84 +1,94 @@
-# Implementation Plan: Supabase, Cloudinary, and Device ID Integration
+# Plan d'Implémentation de la Modification
 
-This document outlines the phased implementation plan for migrating the application to Supabase and Cloudinary.
+Ce document détaille les étapes pour implémenter la nouvelle fonctionnalité de heatmap et de bottom sheet pour les détails des dépotoirs.
 
 ## Journal
 
-- **Phase 1:** Initial setup complete. Added new dependencies and created placeholder files for Supabase and Cloudinary integration. Fixed initial test failures by adding a smoke test. Corrected the package name in `pubspec.yaml` and fixed critical analyzer errors in the new repository file. The project is now in a good state to start Phase 2.
+*   **Phase 1**: Tests initiaux réussis. `map_screen.dart` a été refactorisé pour supprimer l'ancien affichage par marqueurs et cercles. Le widget placeholder `WasteDumpDetailsBottomSheet` a été créé et la méthode `_showWasteDumpDetails` a été mise à jour pour utiliser `showModalBottomSheet`. Une tentative a été faite pour corriger un avertissement d'analyse statique persistant (`use_build_context_synchronously`) dans un fichier non lié (`location_permission_service.dart`), mais sans succès. Pour ne pas bloquer l'avancement, il a été décidé de l'ignorer pour le moment. La phase s'est terminée par l'exécution des outils de formatage et d'analyse.
 
-## Phase 1: Project Setup
+---
 
-- [x] Run all tests to ensure the project is in a good state before starting modifications.
-- [x] Create/modify unit tests for testing the code added or modified in this phase, if relevant.
-- [x] Run the `dart_fix` tool to clean up the code.
-- [x] Run the `analyze_files` tool one more time and fix any issues.
-- [x] Run any tests to make sure they all pass.
-- [x] Run `dart_format` to make sure that the formatting is correct.
-- [ ] Re-read the `MODIFICATION_IMPLEMENTATION.md` file to see what, if anything, has changed in the implementation plan, and if it has changed, take care of anything the changes imply.
-- [ ] Update the `MODIFICATION_IMPLEMENTATION.md` file with the current state, including any learnings, surprises, or deviations in the Journal section. Check off any checkboxes of items that have been completed.
-- [ ] Use `git diff` to verify the changes that have been made, and create a suitable commit message for any changes, following any guidelines you have about commit messages. Be sure to properly escape dollar signs and backticks, and present the change message to the user for approval.
-- [ ] Wait for approval. Don't commit the changes or move on to the next phase of implementation until the user approves the commit.
-- [ ] After commiting the change, if an app is running, use the `hot_reload` tool to reload it.
+## Plan par Phases
 
-## Phase 2: Implement Supabase and Cloudinary Services
+### Phase 1 : Préparation et Refactoring Initial
 
-- [ ] Implement the `SupabaseClientService` to initialize and provide the Supabase client.
-- [ ] Implement a `CloudinaryService` to handle image uploads using `cloudinary_public`.
-- [ ] Configure Cloudinary upload to use an unsigned preset from `.env`.
-- [ ] Ensure the upload process returns a `secure_url` for storage in Supabase.
-- [ ] Verify that no Cloudinary API key or secret is included in the application code.
-- [ ] Implement a `DeviceService` to retrieve the unique device ID.
-- [ ] Create/modify unit tests for testing the code added or modified in this phase, if relevant.
-- [ ] Run the `dart_fix` tool to clean up the code.
-- [ ] Run the `analyze_files` tool one more time and fix any issues.
-- [ ] Run any tests to make sure they all pass.
-- [ ] Run `dart_format` to make sure that the formatting is correct.
-- [ ] Re-read the `MODIFICATION_IMPLEMENTATION.md` file to see what, if anything, has changed in the implementation plan, and if it has changed, take care of anything the changes imply.
-- [ ] Update the `MODIFICATION_IMPLEMENTATION.md` file with the current state, including any learnings, surprises, or deviations in the Journal section. Check off any checkboxes of items that have been completed.
-- [ ] Use `git diff` to verify the changes that have been made, and create a suitable commit message for any changes, following any guidelines you have about commit messages. Be sure to properly escape dollar signs and backticks, and present the change message to the user for approval.
-- [ ] Wait for approval. Don't commit the changes or move on to the next phase of implementation until the user approves the commit.
-- [ ] After commiting the change, if an app is running, use the `hot_reload` tool to reload it.
+L'objectif de cette phase est de préparer le code pour les nouvelles fonctionnalités en supprimant l'ancien affichage et en créant les nouveaux fichiers nécessaires.
 
-## Phase 2.5: Implement Image Service
+- [x] Exécuter tous les tests pour s'assurer que le projet est dans un état stable avant de commencer les modifications.
+- [x] Dans `lib/presentation/screens/map/map_screen.dart`, supprimer les propriétés `markers` et `circles` du widget `GoogleMap`.
+- [x] Créer un nouveau fichier pour le widget du bottom sheet : `lib/presentation/widgets/waste_dump_details_bottom_sheet.dart`.
+- [x] Dans ce nouveau fichier, créer la structure de base du widget `WasteDumpDetailsBottomSheet` (un `StatelessWidget` qui accepte un `WasteDump`).
+- [x] Dans `lib/presentation/screens/map/map_screen.dart`, modifier la méthode `_showWasteDumpDetails` pour qu'elle utilise `showModalBottomSheet` et affiche le nouveau widget `WasteDumpDetailsBottomSheet`.
 
-- [ ] Create a new `ImageService` to handle image picking, resizing, and conversion to WebP.
-- [ ] The service should include a method that:
-    - Picks an image using `image_picker`.
-    - Reads the image data and EXIF orientation.
-    - Resizes the image to a max width of 1200px if it's larger, maintaining aspect ratio.
-    - Encodes the image to WebP format with quality 85.
-    - Saves the converted image to a temporary file.
-    - Returns the temporary file path.
-- [ ] Implement a progress indicator with the message "Compression en cours..." while the image is being processed.
-- [ ] Create/modify unit tests for the `ImageService`.
-- [ ] Run the `dart_fix` tool to clean up the code.
-- [ ] Run the `analyze_files` tool one more time and fix any issues.
-- [ ] Run any tests to make sure they all pass.
-- [ ] Run `dart_format` to make sure that the formatting is correct.
-- [ ] Re-read the `MODIFICATION_IMPLEMENTATION.md` file to see what, if anything, has changed in the implementation plan, and if it has changed, take care of anything the changes imply.
-- [ ] Update the `MODIFICATION_IMPLEMENTATION.md` file with the current state, including any learnings, surprises, or deviations in the Journal section. Check off any checkboxes of items that have been completed.
-- [ ] Use `git diff` to verify the changes that have been made, and create a suitable commit message for any changes, following any guidelines you have about commit messages. Be sure to properly escape dollar signs and backticks, and present the change message to the user for approval.
-- [ ] Wait for approval. Don't commit the changes or move on to the next phase of implementation until the user approves the commit.
-- [ ] After commiting the change, if an app is running, use the `hot_reload` tool to reload it.
+**Après cette phase :**
+- [x] Créer/modifier les tests unitaires pertinents.
+- [x] Exécuter `dart fix --apply`.
+- [x] Exécuter l'analyseur de code et corriger les problèmes.
+- [x] Exécuter tous les tests pour vérifier qu'il n'y a pas de régressions.
+- [x] Exécuter `dart format .`.
+- [x] Mettre à jour la section "Journal" de ce document.
+- [ ] Préparer le message de commit pour les changements, le présenter pour approbation, et attendre l'approbation avant de commettre.
 
-## Phase 3: Implement WasteBin Repository and Update UI
+### Phase 2 : Implémentation de la Heatmap
 
-- [ ] Implement the `WasteBinRepository` to perform CRUD operations on the `waste_bins` table.
-- [ ] Update the UI to use the `WasteBinRepository` to fetch and display waste bin data.
-- [ ] Update the "add bin" functionality to use the `ImageService` and `CloudinaryService` (with `cloudinary_public`), and `WasteBinRepository`.
-- [ ] Create/modify unit tests for testing the code added or modified in this phase, if relevant.
-- [ ] Run the `dart_fix` tool to clean up the code.
-- [ ] Run the `analyze_files` tool one more time and fix any issues.
-- [ ] Run any tests to make sure they all pass.
-- [ ] Run `dart_format` to make sure that the formatting is correct.
-- [ ] Re-read the `MODIFICATION_IMPLEMENTATION.md` file to see what, if anything, has changed in the implementation plan, and if it has changed, take care of anything the changes imply.
-- [ ] Update the `MODIFICATION_IMPLEMENTATION.md` file with the current state, including any learnings, surprises, or deviations in the Journal section. Check off any checkboxes of items that have been completed.
-- [ ] Use `git diff` to verify the changes that have been made, and create a suitable commit message for any changes, following any guidelines you have about commit messages. Be sure to properly escape dollar signs and backticks, and present the change message to the user for approval.
-- [ ] Wait for approval. Don't commit the changes or move on to the next phase of implementation until the user approves the commit.
-- [ ] After commiting the change, if an app is running, use the `hot_reload` tool to reload it.
+L'objectif est d'afficher les données des dépotoirs sous forme de heatmap.
 
-## Phase 4: Finalization
+- [ ] S'assurer que la version de `google_maps_flutter` dans `pubspec.yaml` est suffisamment récente pour supporter les heatmaps. Si non, la mettre à jour.
+- [ ] Dans `lib/presentation/screens/map/map_screen.dart`, transformer la liste de `WasteDump` en une liste de `gmaps.WeightedLatLng`. L'intensité (`intensity`) sera basée sur la `surfaceArea`.
+- [ ] Ajouter la propriété `heatmaps` au widget `GoogleMap` et lui fournir les données générées.
+- [ ] Ajuster les propriétés de la heatmap (`radius`, `opacity`, `gradient`) pour obtenir le meilleur rendu visuel.
 
-- [ ] Update any `README.md` file for the package with relevant information from the modification (if any).
-- [ ] Update any `GEMINI.md` file in the project directory so that it still correctly describes the app, its purpose, and implementation details and the layout of the files.
-- [ ] Ask the user to inspect the package (and running app, if any) and say if they are satisfied with it, or if any modifications are needed.
+**Après cette phase :**
+- [ ] Créer/modifier les tests unitaires pertinents.
+- [ ] Exécuter `dart fix --apply`.
+- [ ] Exécuter l'analyseur de code et corriger les problèmes.
+- [ ] Exécuter tous les tests pour vérifier qu'il n'y a pas de régressions.
+- [ ] Exécuter `dart format .`.
+- [ ] Mettre à jour la section "Journal" de ce document.
+- [ ] Préparer le message de commit pour les changements, le présenter pour approbation, et attendre l'approbation avant de commettre.
+
+### Phase 3 : Interaction avec la Carte (On Tap)
+
+L'objectif est de détecter un appui sur la carte et d'identifier le dépotoir le plus proche.
+
+- [ ] Implémenter le callback `onTap` sur le widget `GoogleMap`.
+- [ ] Dans le `onTap`, récupérer la liste actuelle des `WasteDump` depuis le `wasteDumpsProvider`.
+- [ ] Créer une fonction pour trouver le `WasteDump` le plus proche des coordonnées de l'appui, en utilisant `Geolocator.distanceBetween`.
+- [ ] Ajouter un seuil de distance (par exemple, 200 mètres) pour ne déclencher l'affichage que si l'appui est suffisamment proche d'un dépotoir.
+- [ ] Appeler la méthode `_showWasteDumpDetails` avec le dépotoir trouvé.
+
+**Après cette phase :**
+- [ ] Créer/modifier les tests unitaires pertinents.
+- [ ] Exécuter `dart fix --apply`.
+- [ ] Exécuter l'analyseur de code et corriger les problèmes.
+- [ ] Exécuter tous les tests pour vérifier qu'il n'y a pas de régressions.
+- [ ] Exécuter `dart format .`.
+- [ ] Mettre à jour la section "Journal" de ce document.
+- [ ] Préparer le message de commit pour les changements, le présenter pour approbation, et attendre l'approbation avant de commettre.
+
+### Phase 4 : Conception et Finalisation du Bottom Sheet
+
+L'objectif est de finaliser le design et le comportement du bottom sheet pour qu'il soit professionnel et informatif.
+
+- [ ] Dans `lib/presentation/widgets/waste_dump_details_bottom_sheet.dart`, implémenter un `DraggableScrollableSheet` pour rendre la feuille redimensionnable.
+- [ ] Appliquer un design soigné : coins supérieurs arrondis, espacements corrects, et une poignée de glissement (`drag handle`).
+- [ ] Intégrer l'affichage de l'image (`Image.network`) avec un `loadingBuilder` et un `errorBuilder`.
+- [ ] Afficher toutes les informations pertinentes du `WasteDump` (`surfaceArea`, `timestamp`, `description`, etc.) en utilisant une typographie claire et hiérarchisée.
+- [ ] S'assurer que le layout est responsive et s'adapte bien aux différentes tailles d'écran.
+
+**Après cette phase :**
+- [ ] Créer/modifier les tests unitaires pertinents.
+- [ ] Exécuter `dart fix --apply`.
+- [ ] Exécuter l'analyseur de code et corriger les problèmes.
+- [ ] Exécuter tous les tests pour vérifier qu'il n'y a pas de régressions.
+- [ ] Exécuter `dart format .`.
+- [ ] Mettre à jour la section "Journal" de ce document.
+- [ ] Préparer le message de commit pour les changements, le présenter pour approbation, et attendre l'approbation avant de commettre.
+
+### Phase 5 : Finalisation
+
+L'objectif est de s'assurer que le projet est propre et que la documentation est à jour.
+
+- [ ] Mettre à jour le fichier `README.md` du projet si des changements importants ont été apportés qui nécessitent une documentation.
+- [ ] Demander à l'utilisateur d'inspecter la fonctionnalité et de confirmer si elle répond à ses attentes.
+- [ ] Une fois la satisfaction confirmée, effectuer le commit final pour l'ensemble de la fonctionnalité, comme demandé.
