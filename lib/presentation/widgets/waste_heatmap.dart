@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_heatmap/flutter_map_heatmap.dart';
 import 'package:latlong2/latlong.dart' as lat_lng;
-import 'package:modal_bottom_sheet/modal_bottom_sheet.dart';
+import 'dart:ui';
 
 // Source de données locale pour la heatmap
 class LocalHeatMapDataSource extends HeatMapDataSource {
@@ -45,7 +45,7 @@ class WasteHeatmap extends StatelessWidget {
               point,
               location,
             );
-            if (distance < 50) {
+            if (distance < 500) {
               _showWasteDetails(context, wasteData[location]!);
               return;
             }
@@ -93,23 +93,27 @@ class WasteHeatmap extends StatelessWidget {
   }
 
   void _showWasteDetails(BuildContext context, WasteDumpData data) {
-    showMaterialModalBottomSheet(
+    showModalBottomSheet(
       context: context,
-      expand: false,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.7,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 10,
-              offset: Offset(0, -2),
-            ),
-          ],
-        ),
+      enableDrag: true,
+      isDismissible: true,
+      builder: (context) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+        child: Container(
+          height: MediaQuery.of(context).size.height * 0.7,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 10,
+                offset: Offset(0, -2),
+              ),
+            ],
+          ),
         child: Column(
           children: [
             Container(
@@ -192,6 +196,7 @@ class WasteHeatmap extends StatelessWidget {
               ),
             ),
           ],
+          ),
         ),
       ),
     );

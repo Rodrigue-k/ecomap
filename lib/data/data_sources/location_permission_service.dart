@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -355,12 +357,15 @@ class LocationPermissionService {
   }
 
   static Future<void> _handlePermissionRequest(BuildContext context) async {
-    if (!context.mounted) return;
-    Navigator.of(context).pop();
-    LocationPermission permission = await Geolocator.requestPermission();
+    final navigator = Navigator.of(context);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+    final permission = await Geolocator.requestPermission();
+
+    navigator.pop();
+
     if (permission == LocationPermission.denied) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      scaffoldMessenger.showSnackBar(
         const SnackBar(
           content: Text(
             'Permission refusée. Impossible d\'ajouter une poubelle.',

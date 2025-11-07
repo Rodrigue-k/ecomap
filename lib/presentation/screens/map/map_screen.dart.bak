@@ -1,0 +1,667 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:geolocator/geolocator.dart' as geo;
+
+import 'package:ecomap/core/services/location_service.dart' as custom_loc;
+import 'package:ecomap/domain/entities/waste_dump.dart';
+import 'package:ecomap/presentation/providers/waste_dump_provider.dart';
+import 'package:ecomap/presentation/controllers/map_controller.dart';
+
+class MapScreen extends ConsumerStatefulWidget {
+  const MapScreen({super.key});
+
+  @override
+  ConsumerState<MapScreen> createState() => _MapScreenState();
+}
+
+class _MapScreenState extends ConsumerState<MapScreen>
+    with WidgetsBindingObserver {
+  double _currentZoom = 15.0; // Niveau de zoom initial
+  final custom_loc.LocationService _locationService =
+      custom_loc.LocationService();
+  MapController? _mapController;
+  final LatLng _defaultLocation = const LatLng(
+    6.1333,
+    1.2167,
+  ); // Lomé, Togo
+  late final AppLifecycleListener _appLifecycleListener;
+  LatLng? _currentPosition;
+  List<Marker> _markers = [];
+  
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+
+    // Configurer l'écouteur du cycle de vie de l'application
+    _appLifecycleListener = AppLifecycleListener(onResume: _onAppResumed);
+
+    // Initialiser la localisation après le premier rendu
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeLocation();
+    });
+  }
+
+  @override
+  void dispose() {
+    _mapController?.dispose();
+    _appLifecycleListener.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // Appelé quand l'application revient au premier plan
+  Future<void> _onAppResumed() {
+    // Rafraîchir la position actuelle lorsque l'application revient au premier plan
+    _initializeLocation();
+  }
+
+  // Convertir WasteDump en marqueur
+  Marker _wasteDumpToMarker(WasteDump dump) {
+    return Marker(
+      width: 40,
+      height: 40,
+      point: LatLng(dump.latitude, dump.longitude),
+      builder: (ctx) => GestureDetector(
+        onTap: () => _showWasteDumpDetails(dump),
+        child: const Icon(
+          Icons.location_on,
+          color: Colors.red,
+          size: 40,
+        ),
+      ),
+    );
+  }
+
+  // Mettre à jour les marqueurs
+  void _updateMarkers(List<WasteDump> dumps) {
+    setState(() {
+      _markers = dumps.map((dump) => _wasteDumpToMarker(dump)).toList();
+    });
+  }
+
+  // Aller à la position actuelle
+  Future<void> _goToCurrentLocation() async {
+    try {
+      final position = await _locationService.getCurrentPosition();
+      if (mounted) {
+        _mapController?.move(
+          LatLng(position.latitude, position.longitude),
+          _currentZoom,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        _showPermanentSnackBar(
+          'Impossible d\'accéder à votre position actuelle',
+          isLocationDisabled: true,
+        );
+      }
+    }
+  }
+
+  Future<void> _initializeLocation() async {
+    try {
+      final position = await _locationService.getCurrentPosition();
+      _currentPosition = LatLng(position.latitude, position.longitude);
+
+      if (mounted) {
+        _mapController?.move(
+          _currentPosition!,
+          _currentZoom,
+        );
+        setState(() {});
+      }
+    } catch (e) {
+      if (mounted) {
+        _showPermanentSnackBar(
+          'Impossible d\'accéder à votre position actuelle',
+          isLocationDisabled: true,
+        );
+      }
+    }
+  }
+
+  void _showWasteDumpDetails(WasteDump dump) {
+    final mediaQuery = MediaQuery.of(context);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      isDismissible: true,
+      enableDrag: true,
+      useSafeArea: false, // Désactiver useSafeArea pour contrôler manuellement les marges
+      builder: (context) => Container(
+        height: mediaQuery.size.height,
+        padding: EdgeInsets.only(
+          top: mediaQuery.padding.top + 16,
+          bottom: mediaQuery.padding.bottom,
+        ),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 20,
+              spreadRadius: 5,
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // Poignée de glissement
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // En-tête avec titre et bouton de fermeture
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Détails du point de collecte',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 24),
+                    onPressed: () => Navigator.of(context).pop(),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+            ),
+            // Contenu défilable
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      height: mediaQuery.size.height * 0.8,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Column(
+                        children: [
+                          // Poignée de la feuille modale
+                          Container(
+                            margin: const EdgeInsets.symmetric(vertical: 8),
+                            width: 40,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[300],
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                          ),
+                          // Image du dépôt
+                          Expanded(
+                            flex: 4,
+                            child: dump.photoUrl != null
+                                ? ClipRRect(
+                                    borderRadius: const BorderRadius.vertical(
+                                      top: Radius.circular(20),
+                                    ),
+                                    child: Image.network(
+                                      dump.photoUrl!,
+                                      fit: BoxFit.cover,
+                                      width: double.infinity,
+                                      errorBuilder: (_, __, ___) => Container(
+                                        color: Colors.grey[200],
+                                        child: const Center(
+                                          child: Icon(
+                                            Icons.broken_image,
+                                            size: 50,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : Container(
+                                    color: Colors.grey[200],
+                                    child: const Center(
+                                      child: Icon(
+                                        Icons.photo_library,
+                                        size: 100,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ),
+                          ),
+                          // Détails du dépôt
+                          Expanded(
+                            flex: 3,
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Dépôt sauvage',
+                                    style: Theme.of(context).textTheme.headlineSmall,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _buildDetailRow(
+                                    Icons.calendar_today,
+                                    'Signalé le: ${_formatDate(dump.timestamp)}',
+                                  ),
+                                  _buildDetailRow(
+                                    Icons.square_foot,
+                                    'Surface: ${dump.surfaceArea.toStringAsFixed(1)} m²',
+                                  ),
+                                  _buildDetailRow(
+                                    Icons.info_outline,
+                                    'Statut: ${_getStatusText(dump.status)}',
+                                  ),
+                                  if (dump.reportedBy != null)
+                                    _buildDetailRow(Icons.person, 'Par: ${dump.reportedBy}'),
+                                  if (dump.tags?.isNotEmpty ?? false)
+                                    _buildDetailRow(Icons.tag, 'Tags: ${dump.tags?.join(', ') ?? 'Aucun tag'}'),
+                                  if (dump.description?.isNotEmpty ?? false)
+                                    _buildDetailRow(Icons.description, dump.description!),
+                                  const Spacer(),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text('Je gère ce dépotoir'),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: Colors.grey[600]),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 14),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  String _getStatusText(String status) {
+    return switch (status.toLowerCase()) {
+      'reported' => 'Signalé',
+      'in_progress' => 'En cours',
+      'resolved' => 'Résolu',
+      _ => status,
+    };
+  }
+
+  // Calculer la distance entre deux points en mètres
+  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    return geo.Geolocator.distanceBetween(lat1, lon1, lat2, lon2);
+  }
+            "weight": 1.5
+          }
+        ]
+      },
+      {
+        "featureType": "road.highway",
+        "elementType": "labels.text.fill",
+        "stylers": [
+          {
+            "color": "#2e7d32"
+          },
+          {
+            "weight": 0.8
+          }
+        ]
+      },
+      {
+        "featureType": "water",
+        "elementType": "geometry.fill",
+        "stylers": [
+          {
+            "color": "#b3e5fc"
+          },
+          {
+            "saturation": 20
+          },
+          {
+            "lightness": 10
+          }
+        ]
+      },
+      {
+        "featureType": "water",
+        "elementType": "labels.text.fill",
+        "stylers": [
+          {
+            "color": "#0288d1"
+          },
+          {
+            "weight": 0.5
+          }
+        ]
+      },
+      {
+        "featureType": "landscape.natural",
+        "elementType": "geometry.fill",
+        "stylers": [
+          {
+            "color": "#f1f8e9"
+          },
+          {
+            "saturation": 5
+          },
+          {
+            "lightness": 15
+          }
+        ]
+      }
+    ]
+    ''';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(mapControllerProvider);
+    final wasteDumpsAsync = ref.watch(wasteDumpsProvider);
+
+    // Configuration de la barre d'état et de navigation
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarDividerColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ));
+
+    // Mettre à jour les marqueurs lorsque les données changent
+    wasteDumpsAsync.whenData((dumps) {
+      if (_currentZoom > 14) {
+        _updateMarkers(dumps);
+      } else {
+        _updateMarkers([]);
+      }
+    });
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.white, Color(0xFFF5F5F5)],
+          ),
+        ),
+        child: Stack(
+          children: [
+            // Carte OpenStreetMap
+            FlutterMap(
+              mapController: _mapController ??= MapController(),
+              options: MapOptions(
+                initialCenter: _currentPosition ?? _defaultLocation,
+                initialZoom: _currentZoom,
+                onPositionChanged: (position, hasGesture) {
+                  if (hasGesture) {
+                    setState(() {
+                      _currentZoom = position.zoom!;
+                    });
+                  }
+                },
+                onTap: (tapPosition, point) {
+                  // Gérer le tap sur la carte
+                  wasteDumpsAsync.whenData((dumps) {
+                    for (final dump in dumps) {
+                      final distance = _calculateDistance(
+                        point.latitude,
+                        point.longitude,
+                        dump.latitude,
+                        dump.longitude,
+                      );
+
+                      // Si le clic est à moins de 50 mètres d'un point
+                      if (distance < 50) {
+                        _showWasteDumpDetails(dump);
+                        return;
+                      }
+                    }
+                  });
+                },
+              ),
+              children: [
+                // Couche de tuiles OpenStreetMap
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.example.ecomap',
+                ),
+                
+                // Marqueurs
+                MarkerLayer(
+                  markers: _markers,
+                ),
+                
+                // Contrôles de la carte
+                Align(
+                  alignment: Alignment.bottomRight,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Bouton de zoom avant
+                        FloatingActionButton.small(
+                          heroTag: 'zoom_in',
+                          onPressed: () {
+                            _mapController?.move(
+                              _mapController!.camera.center,
+                              _mapController!.camera.zoom + 1,
+                            );
+                            setState(() {
+                              _currentZoom = _mapController!.camera.zoom + 1;
+                            });
+                          },
+                          child: const Icon(Icons.add),
+                        ),
+                        const SizedBox(height: 8),
+                        // Bouton de zoom arrière
+                        FloatingActionButton.small(
+                          heroTag: 'zoom_out',
+                          onPressed: () {
+                            _mapController?.move(
+                              _mapController!.camera.center,
+                              _mapController!.camera.zoom - 1,
+                            );
+                            setState(() {
+                              _currentZoom = _mapController!.camera.zoom - 1;
+                            });
+                          },
+                          child: const Icon(Icons.remove),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            )
+          ],
+          // Afficher les marqueurs uniquement à un certain niveau de zoom
+          markers: wasteDumpsAsync.when(
+            data: (dumps) => _currentZoom > 14 ? _getMarkers(dumps) : {},
+            loading: () => {},
+            error: (_, __) => {},
+          ),
+          onCameraMove: (position) {
+            // Mettre à jour le niveau de zoom actuel
+            if (mounted) {
+              setState(() {
+                _currentZoom = position.zoom;
+              });
+            }
+          },
+          onTap: (latLng) {
+            // Vérifier si un point de la heatmap a été touché
+            wasteDumpsAsync.whenData((dumps) {
+              for (final dump in dumps) {
+                final distance = Geolocator.distanceBetween(
+                  latLng.latitude,
+                  latLng.longitude,
+                  dump.latitude,
+                  dump.longitude,
+                );
+
+                // Si le clic est à moins de 50 mètres d'un point de la heatmap
+                if (distance < 50) {
+                  _showWasteDumpDetails(dump);
+                  return;
+                }
+              }
+            });
+          },
+          heatmaps: wasteDumpsAsync.when(
+            data: (dumps) {
+              return {
+                gmaps.Heatmap(
+                  heatmapId: const gmaps.HeatmapId('waste_dumps_heatmap'),
+                  data: dumps.map((dump) => gmaps.WeightedLatLng(
+                    gmaps.LatLng(dump.latitude, dump.longitude),
+                  )).toList(),
+                  // Ajuster dynamiquement la taille du rayon en fonction du zoom
+                  radius: gmaps.HeatmapRadius.fromPixels(
+                    // Taille de base à zoom 15
+                    // Ajustement progressif en fonction du zoom
+                    // Minimum 10, maximum 100
+                    (50 / (1 + (_currentZoom - 15).abs())).round().clamp(10, 100),
+                  ),
+                  opacity: 0.7,
+                ),
+              };
+            },
+            loading: () => {},
+            error: (_, __) => {},
+          ),
+        ),
+
+        // Barre de recherche en forme de gélule
+        Positioned(
+          top: MediaQuery.of(context).padding.top + 10,
+          left: 16,
+          right: 16,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(50), // Coins plus arrondis pour la forme de gélule
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 15,
+                  spreadRadius: 1,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+              border: Border.all(
+                color: Colors.grey.shade200,
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                const SizedBox(width: 16),
+                const Icon(Icons.search, color: Colors.grey, size: 22),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    decoration: const InputDecoration(
+                      hintText: 'Rechercher un lieu...',
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(vertical: 16),
+                      isDense: true,
+                    ),
+                    style: const TextStyle(fontSize: 15),
+                    onChanged: (value) {
+                      // TODO: Implémenter la recherche en temps réel
+                    },
+                  ),
+                ),
+                Container(
+                  height: 30,
+                  width: 1,
+                  color: Colors.grey.shade300,
+                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.tune_rounded, color: Colors.grey, size: 22),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () {
+                    // TODO: Implémenter les filtres de recherche
+                  },
+                ),
+                const SizedBox(width: 8),
+              ],
+            ),
+          ),
+        ),
+
+        // Bouton de recentrage
+        Positioned(
+          bottom: 100,
+          right: 16,
+          child: FloatingActionButton(
+            heroTag: 'location_button',
+            onPressed: _goToCurrentLocation,
+            backgroundColor: Colors.white,
+            child: const Icon(Icons.my_location, color: Colors.black87),
+          ),
+        ),
+
+        // Indicateur de chargement
+        if (state.status == MapStatus.loading)
+          const Center(child: CircularProgressIndicator()),
+      ],
+    ),),);
+  }
+}

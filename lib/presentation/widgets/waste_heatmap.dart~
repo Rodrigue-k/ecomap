@@ -1,0 +1,257 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_heatmap/flutter_map_heatmap.dart';
+import 'package:latlong2/latlong.dart' as lat_lng;
+import 'dart:ui';
+import 'package:flutter/material.dart';
+
+// Source de données locale pour la heatmap
+class LocalHeatMapDataSource extends HeatMapDataSource {
+  final List<WeightedLatLng> points;
+
+  LocalHeatMapDataSource({required this.points});
+
+  @override
+  List<WeightedLatLng> getData(LatLngBounds bounds, double zoom) {
+    // Filtrer les points dans la zone visible pour la performance
+    return points.where((p) => bounds.contains(p.latLng)).toList();
+  }
+}
+
+class WasteHeatmap extends StatelessWidget {
+  final List<lat_lng.LatLng> wasteLocations;
+  final Map<lat_lng.LatLng, WasteDumpData> wasteData;
+  final lat_lng.LatLng? currentLocation;
+
+  const WasteHeatmap({
+    super.key,
+    required this.wasteLocations,
+    required this.wasteData,
+    this.currentLocation,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FlutterMap(
+      options: MapOptions(
+        initialCenter:
+            currentLocation ??
+            const lat_lng.LatLng(6.1333, 1.2167), // Lomé par défaut
+        initialZoom: 12.0,
+        onTap: (tapPosition, point) {
+          for (final location in wasteLocations) {
+            final distance = const lat_lng.Distance().as(
+              lat_lng.LengthUnit.Meter,
+              point,
+              location,
+            );
+            if (distance < 500) {
+              _showWasteDetails(context, wasteData[location]!);
+              return;
+            }
+          }
+        },
+      ),
+      children: [
+        TileLayer(
+          urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+          subdomains: const ['a', 'b', 'c'],
+          userAgentPackageName: 'com.koudatek.ecomap',
+        ),
+        HeatMapLayer(
+          heatMapDataSource: LocalHeatMapDataSource(
+            points: wasteLocations.map((p) => WeightedLatLng(p, 1.0)).toList(),
+          ),
+          heatMapOptions: HeatMapOptions(
+            gradient: {
+              0.25: Colors.blue,
+              0.55: Colors.green,
+              0.85: Colors.yellow,
+              1.0: Colors.red,
+            },
+            minOpacity: 0.1,
+            radius: 25,
+          ),
+        ),
+        if (currentLocation != null)
+          MarkerLayer(
+            markers: [
+              Marker(
+                width: 40,
+                height: 40,
+                point: currentLocation!,
+                child: const Icon(
+                  Icons.my_location,
+                  color: Colors.blue,
+                  size: 40,
+                ),
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+
+  void _showWasteDetails(BuildContext context, WasteDumpData data) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      enableDrag: true,
+      isDismissible: true,
+      builder: (context) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+        child: Container(
+          height: MediaQuery.of(context).size.height * 0.7,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 10,
+                offset: Offset(0, -2),
+              ),
+            ],
+          ),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              width: 40,
+              height: 5,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(5),
+              ),
+            ),
+            Expanded(
+              flex: 4,
+              child: data.photoUrl != null
+                  ? ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(20),
+                      ),
+                      child: CachedNetworkImage(
+                        imageUrl: data.photoUrl!,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        placeholder: (_, __) =>
+                            const Center(child: CircularProgressIndicator()),
+                        errorWidget: (_, __, ___) =>
+                            const Icon(Icons.error, size: 50),
+                      ),
+                    )
+                  : Container(
+                      color: Colors.grey[200],
+                      child: const Center(
+                        child: Icon(
+                          Icons.photo_library,
+                          size: 100,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ),
+            ),
+            Expanded(
+              flex: 3,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Dépôt sauvage',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    _buildDetailRow(
+                      Icons.calendar_today,
+                      'Signalé le: ${data.formattedDate}',
+                    ),
+                    _buildDetailRow(
+                      Icons.square_foot,
+                      'Surface: ${data.surfaceArea.toStringAsFixed(1)} m²',
+                    ),
+                    _buildDetailRow(
+                      Icons.info_outline,
+                      'Statut: ${_getStatusText(data.status)}',
+                    ),
+                    if (data.reportedBy != null)
+                      _buildDetailRow(Icons.person, 'Par: ${data.reportedBy}'),
+                    if (data.tags?.isNotEmpty ?? false)
+                      _buildDetailRow(Icons.tag, 'Tags: ${data.formattedTags}'),
+                    if (data.description?.isNotEmpty ?? false)
+                      _buildDetailRow(Icons.description, data.description!),
+                    const Spacer(),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Je gère ce dépotoir'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: Colors.blue),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 14, height: 1.4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getStatusText(String status) {
+    return switch (status.toLowerCase()) {
+      'reported' => 'Signalé',
+      'in_progress' => 'En cours',
+      'resolved' => 'Résolu',
+      _ => status,
+    };
+  }
+}
+
+class WasteDumpData {
+  final String? photoUrl;
+  final DateTime timestamp;
+  final double surfaceArea;
+  final String status;
+  final String? description;
+  final String? reportedBy;
+  final List<String>? tags;
+
+  WasteDumpData({
+    this.photoUrl,
+    required this.timestamp,
+    required this.surfaceArea,
+    required this.status,
+    this.description,
+    this.reportedBy,
+    this.tags,
+  });
+
+  String get formattedDate =>
+      '${timestamp.day}/${timestamp.month}/${timestamp.year}';
+  String get formattedTags => tags?.join(', ') ?? 'Aucun tag';
+}

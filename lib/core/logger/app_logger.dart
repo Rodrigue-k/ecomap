@@ -8,7 +8,7 @@ class AppLogger {
       lineLength: 50,
       colors: true,
       printEmojis: true,
-      printTime: false,
+      dateTimeFormat: DateTimeFormat.none,
     ),
   );
 
@@ -28,7 +28,7 @@ class AppLogger {
     _logger.e(message, error: error, stackTrace: stackTrace);
   }
 
-  static void wtf(String message, {dynamic error, StackTrace? stackTrace}) {
-    _logger.wtf(message, error: error, stackTrace: stackTrace);
+  static void f(String message, {dynamic error, StackTrace? stackTrace}) {
+    _logger.f(message, error: error, stackTrace: stackTrace);
   }
 }

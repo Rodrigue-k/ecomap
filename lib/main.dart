@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:ecomap/core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -44,7 +45,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'EcoMap',
-      theme: ThemeData.light(),
+      theme: AppTheme.lightTheme,
       routerConfig: AppRouter.router,
       debugShowCheckedModeBanner: false,
     );
