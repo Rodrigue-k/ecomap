@@ -57,6 +57,14 @@ class _MainScreenState extends ConsumerState<MainScreen> with SingleTickerProvid
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarDividerColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ));
+
     return Scaffold(
       extendBody: true, // Permet au contenu de s'étendre sous la barre de navigation
       body: BottomBar(

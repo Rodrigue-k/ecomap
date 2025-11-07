@@ -8,6 +8,8 @@ import 'package:flutter_map/flutter_map.dart' as fm;
 import 'package:flutter_map_heatmap/flutter_map_heatmap.dart';
 import 'package:latlong2/latlong.dart' as lat_lng;
 import 'package:url_launcher/url_launcher.dart';
+import 'services/map_layers_controller.dart';
+import 'widgets/map_layer_selector.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart'; // CORRECT
 
 import 'package:ecomap/core/services/location_service.dart' as custom_loc;
@@ -72,11 +74,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
   void _showErrorSnackBar(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
-  }
-
-  void _showInfoSnackBar(String msg) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 3)));
   }
 
   void _showPermanentSnackBar(String msg, {bool isLocationDisabled = false}) {
@@ -144,6 +141,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
   Widget build(BuildContext context) {
     final wasteDumpsAsync = ref.watch(wasteDumpsProvider);
     final dumps = wasteDumpsAsync.value ?? [];
+    final selectedLayer = ref.watch(mapLayersControllerProvider);
+    final layersController = ref.read(mapLayersControllerProvider.notifier);
 
     final center = _currentLocation != null
         ? lat_lng.LatLng(_currentLocation!.latitude, _currentLocation!.longitude)
@@ -154,8 +153,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
         .toList();
 
     final showHeatmap = heatMapPoints.isNotEmpty;
-
-    final heatmapRadius = (50 / (1 + (_currentZoom - 15).abs())).round().clamp(10, 100);
 
     return Stack(
       children: [
@@ -185,10 +182,28 @@ class _MapScreenState extends ConsumerState<MapScreen>
               HeatMapLayer(
                 heatMapDataSource: InMemoryHeatMapDataSource(data: heatMapPoints),
                 heatMapOptions: HeatMapOptions(
-                  radius: heatmapRadius.toDouble(),
+                  radius: (50 / (1 + (_currentZoom - 15).abs())).roundToDouble().clamp(10, 100),
                   minOpacity: 0.5,
                   gradient: {0.0: Colors.blue, 0.4: Colors.green, 0.7: Colors.yellow, 1.0: Colors.red},
                 ),
+              ),
+
+            // MARQUEURS TIGE SUR HEATMAP (zoom local)
+            if (dumps.isNotEmpty && _currentZoom >= 12)
+              fm.MarkerLayer(
+                markers: dumps.map((dump) {
+                  return fm.Marker(
+                    point: lat_lng.LatLng(dump.latitude, dump.longitude),
+                    child: GestureDetector(
+                      onTap: () => _showWasteDumpDetails(dump),
+                      child: const Icon(
+                        Icons.location_pin,
+                        color: Color(0xFF4CAF50), // Vert éco
+                        size: 40,
+                      ),
+                    ),
+                  );
+                }).toList(),
               ),
 
             // CLUSTERING (zoom continental)
@@ -197,12 +212,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 options: MarkerClusterLayerOptions(
                   maxClusterRadius: 80,
                   size: const Size(50, 50),
-                  //fitBoundsOptions: const FitBoundsOptions(padding: [50, 50]),
+                  padding: const EdgeInsets.all(50),
                   markers: dumps
                       .map((d) => fm.Marker(
                     point: lat_lng.LatLng(d.latitude, d.longitude),
-                    width: 50,
-                    height: 50,
                     child: const SizedBox.shrink(),
                   ))
                       .toList(),
@@ -212,8 +225,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                       final dump = dumps.firstWhere((d) =>
                       d.latitude == m.point.latitude && d.longitude == m.point.longitude);
                       return sum + dump.surfaceArea;
-                    }) /
-                        total;
+                    }) / total;
 
                     return GestureDetector(
                       onTap: () {
@@ -274,7 +286,31 @@ class _MapScreenState extends ConsumerState<MapScreen>
         ),
 
         // UI
-        Positioned(top: MediaQuery.of(context).padding.top + 16, left: 0, right: 0, child: SearchBarWidget(onChanged: (_) {}, onTap: () {})),
+        Positioned(
+          top: MediaQuery.of(context).padding.top + 16,
+          left: 0,
+          right: 0,
+          child: Column(
+            children: [
+              SearchBarWidget(onChanged: (_) {}, onTap: () {}),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: MapLayerSelector(
+                  selectedLayer: selectedLayer,
+                  onLayerChanged: (layer) async {
+                    layersController.changeLayer(layer);
+                    // Load environmental data when changing to those layers
+                    if (layer == 'chaleur' || layer == 'air') {
+                      final center = _mapController.camera.center;
+                      await ref.read(environmentalDataProvider.notifier).loadEnvironmentalData(center.latitude, center.longitude);
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
         Positioned(
           bottom: 100,
           right: 16,
@@ -285,12 +321,14 @@ class _MapScreenState extends ConsumerState<MapScreen>
             const SizedBox(height: 16),
             FloatingActionButton(heroTag: 'location', onPressed: _initializeLocation, backgroundColor: Colors.white, child: const Icon(Icons.my_location, color: Colors.black87)),
 
-          SizedBox(height: 30,)
+            SizedBox(height: 30,)
           ]
           ),
         ),
 
-        if (wasteDumpsAsync.isLoading) const Center(child: CircularProgressIndicator()),
+        if (wasteDumpsAsync.isLoading)
+          const Center(child: CircularProgressIndicator()),
+
         if (wasteDumpsAsync.hasValue && dumps.isEmpty)
           Center(
             child: Container(
