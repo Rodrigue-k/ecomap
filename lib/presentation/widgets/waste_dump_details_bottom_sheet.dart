@@ -1,6 +1,7 @@
 // lib/presentation/widgets/waste_dump_details_bottom_sheet.dart
 import 'package:flutter/material.dart';
 import 'package:ecomap/domain/entities/waste_dump.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class WasteDumpDetailsBottomSheet extends StatelessWidget {
   final WasteDump dump;
@@ -82,10 +83,28 @@ class WasteDumpDetailsBottomSheet extends StatelessWidget {
                   if (dump.description?.isNotEmpty ?? false) _buildRow(Icons.description, dump.description!),
 
                   const SizedBox(height: 24),
+                  const SizedBox(height: 8),
                   ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                    child: const Text('Je gère ce dépotoir', style: TextStyle(color: Colors.white)),
+                    onPressed: () async {
+                      final lat = dump.latitude;
+                      final lng = dump.longitude;
+                      final url = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
+                      if (await canLaunchUrl(url)) {
+                        await launchUrl(url);
+                      } else {
+                        // Gère l'erreur, e.g., show SnackBar
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Impossible d'ouvrir la carte")),
+                          );
+                        }
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      minimumSize: const Size(double.infinity, 48),
+                    ),
+                    child: const Text('Je gère ce dépotoir', style: TextStyle(color: Colors.white, fontSize: 16)),
                   ),
                 ],
               ),
